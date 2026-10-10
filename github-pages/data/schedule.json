@@ -118,6 +118,20 @@
       "to": 18,
       "parity": "all",
       "color": "orange"
+    },
+    {
+      "id": "lesson-f82fd1ec-6213-42e5-9e6a-fccae939c8ed",
+      "classId": "class-346d7df4-0c57-4107-9eca-1fa727ed919e",
+      "name": "初阶综合英语",
+      "teacher": "贾敏",
+      "room": "九合堂",
+      "day": 1,
+      "start": 0,
+      "end": 1,
+      "from": 6,
+      "to": 18,
+      "parity": "all",
+      "color": "teal"
     }
   ],
   "demo": false

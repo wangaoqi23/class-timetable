@@ -4,50 +4,54 @@
   "startDate": "2026-09-07",
   "weeks": 18,
   "periods": [
-    { "name": "第 1 节", "start": "08:00", "end": "08:45" },
-    { "name": "第 2 节", "start": "08:55", "end": "09:40" },
-    { "name": "第 3 节", "start": "10:00", "end": "10:45" },
-    { "name": "第 4 节", "start": "10:55", "end": "11:40" },
-    { "name": "第 5 节", "start": "14:00", "end": "14:45" },
-    { "name": "第 6 节", "start": "14:55", "end": "15:40" },
-    { "name": "第 7 节", "start": "16:00", "end": "16:45" },
-    { "name": "第 8 节", "start": "16:55", "end": "17:40" }
+    {
+      "name": "第 1 节",
+      "start": "08:00",
+      "end": "08:45"
+    },
+    {
+      "name": "第 2 节",
+      "start": "08:55",
+      "end": "09:40"
+    },
+    {
+      "name": "第 3 节",
+      "start": "10:00",
+      "end": "10:45"
+    },
+    {
+      "name": "第 4 节",
+      "start": "10:55",
+      "end": "11:40"
+    },
+    {
+      "name": "第 5 节",
+      "start": "14:00",
+      "end": "14:45"
+    },
+    {
+      "name": "第 6 节",
+      "start": "14:55",
+      "end": "15:40"
+    },
+    {
+      "name": "第 7 节",
+      "start": "16:00",
+      "end": "16:45"
+    },
+    {
+      "name": "第 8 节",
+      "start": "16:55",
+      "end": "17:40"
+    }
   ],
   "classes": [
-    { "id": "cs-01", "name": "计算机 1 班", "note": "2026 级" },
-    { "id": "cs-02", "name": "计算机 2 班", "note": "2026 级" },
-    { "id": "design-01", "name": "设计 1 班", "note": "2026 级" }
+    {
+      "id": "class-346d7df4-0c57-4107-9eca-1fa727ed919e",
+      "name": "游戏艺术设计1班",
+      "note": "2026"
+    }
   ],
-  "lessons": [
-    { "id": "sample-0-0", "classId": "cs-01", "name": "高等数学", "teacher": "陈老师", "room": "教学楼 A201", "day": 0, "start": 0, "end": 1, "from": 1, "to": 18, "parity": "all", "color": "blue" },
-    { "id": "sample-0-1", "classId": "cs-01", "name": "大学英语", "teacher": "李老师", "room": "教学楼 B302", "day": 0, "start": 2, "end": 3, "from": 1, "to": 18, "parity": "all", "color": "violet" },
-    { "id": "sample-0-2", "classId": "cs-01", "name": "程序设计", "teacher": "王老师", "room": "实验楼 402", "day": 1, "start": 4, "end": 5, "from": 1, "to": 18, "parity": "all", "color": "teal" },
-    { "id": "sample-0-3", "classId": "cs-01", "name": "线性代数", "teacher": "刘老师", "room": "教学楼 A205", "day": 2, "start": 0, "end": 1, "from": 1, "to": 18, "parity": "all", "color": "orange" },
-    { "id": "sample-0-4", "classId": "cs-01", "name": "大学物理", "teacher": "赵老师", "room": "教学楼 C101", "day": 2, "start": 2, "end": 3, "from": 1, "to": 18, "parity": "all", "color": "rose" },
-    { "id": "sample-0-5", "classId": "cs-01", "name": "体育", "teacher": "周老师", "room": "田径场", "day": 3, "start": 4, "end": 5, "from": 1, "to": 18, "parity": "all", "color": "teal" },
-    { "id": "sample-0-6", "classId": "cs-01", "name": "高等数学", "teacher": "陈老师", "room": "教学楼 A201", "day": 4, "start": 0, "end": 1, "from": 1, "to": 18, "parity": "all", "color": "blue" },
-    { "id": "sample-0-7", "classId": "cs-01", "name": "大学英语", "teacher": "李老师", "room": "教学楼 B302", "day": 4, "start": 2, "end": 3, "from": 1, "to": 18, "parity": "all", "color": "violet" },
-    { "id": "sample-0-8", "classId": "cs-01", "name": "程序设计", "teacher": "王老师", "room": "实验楼 402", "day": 4, "start": 4, "end": 5, "from": 1, "to": 18, "parity": "all", "color": "teal" },
-
-    { "id": "sample-1-0", "classId": "cs-02", "name": "大学英语", "teacher": "李老师", "room": "教学楼 B302", "day": 0, "start": 0, "end": 1, "from": 1, "to": 18, "parity": "all", "color": "violet" },
-    { "id": "sample-1-1", "classId": "cs-02", "name": "程序设计", "teacher": "王老师", "room": "实验楼 402", "day": 0, "start": 2, "end": 3, "from": 1, "to": 18, "parity": "all", "color": "teal" },
-    { "id": "sample-1-2", "classId": "cs-02", "name": "线性代数", "teacher": "刘老师", "room": "教学楼 A205", "day": 1, "start": 4, "end": 5, "from": 1, "to": 18, "parity": "all", "color": "orange" },
-    { "id": "sample-1-3", "classId": "cs-02", "name": "大学物理", "teacher": "赵老师", "room": "教学楼 C101", "day": 2, "start": 0, "end": 1, "from": 1, "to": 18, "parity": "all", "color": "rose" },
-    { "id": "sample-1-4", "classId": "cs-02", "name": "体育", "teacher": "周老师", "room": "田径场", "day": 2, "start": 2, "end": 3, "from": 1, "to": 18, "parity": "all", "color": "teal" },
-    { "id": "sample-1-5", "classId": "cs-02", "name": "高等数学", "teacher": "陈老师", "room": "教学楼 A201", "day": 3, "start": 4, "end": 5, "from": 1, "to": 18, "parity": "all", "color": "blue" },
-    { "id": "sample-1-6", "classId": "cs-02", "name": "大学英语", "teacher": "李老师", "room": "教学楼 B302", "day": 4, "start": 0, "end": 1, "from": 1, "to": 18, "parity": "all", "color": "violet" },
-    { "id": "sample-1-7", "classId": "cs-02", "name": "程序设计", "teacher": "王老师", "room": "实验楼 402", "day": 4, "start": 2, "end": 3, "from": 1, "to": 18, "parity": "all", "color": "teal" },
-    { "id": "sample-1-8", "classId": "cs-02", "name": "线性代数", "teacher": "刘老师", "room": "教学楼 A205", "day": 4, "start": 4, "end": 5, "from": 1, "to": 18, "parity": "all", "color": "orange" },
-
-    { "id": "sample-2-0", "classId": "design-01", "name": "程序设计", "teacher": "王老师", "room": "实验楼 402", "day": 0, "start": 0, "end": 1, "from": 1, "to": 18, "parity": "all", "color": "teal" },
-    { "id": "sample-2-1", "classId": "design-01", "name": "线性代数", "teacher": "刘老师", "room": "教学楼 A205", "day": 0, "start": 2, "end": 3, "from": 1, "to": 18, "parity": "all", "color": "orange" },
-    { "id": "sample-2-2", "classId": "design-01", "name": "大学物理", "teacher": "赵老师", "room": "教学楼 C101", "day": 1, "start": 4, "end": 5, "from": 1, "to": 18, "parity": "all", "color": "rose" },
-    { "id": "sample-2-3", "classId": "design-01", "name": "体育", "teacher": "周老师", "room": "田径场", "day": 2, "start": 0, "end": 1, "from": 1, "to": 18, "parity": "all", "color": "teal" },
-    { "id": "sample-2-4", "classId": "design-01", "name": "高等数学", "teacher": "陈老师", "room": "教学楼 A201", "day": 2, "start": 2, "end": 3, "from": 1, "to": 18, "parity": "all", "color": "blue" },
-    { "id": "sample-2-5", "classId": "design-01", "name": "大学英语", "teacher": "李老师", "room": "教学楼 B302", "day": 3, "start": 4, "end": 5, "from": 1, "to": 18, "parity": "all", "color": "violet" },
-    { "id": "sample-2-6", "classId": "design-01", "name": "程序设计", "teacher": "王老师", "room": "实验楼 402", "day": 4, "start": 0, "end": 1, "from": 1, "to": 18, "parity": "all", "color": "teal" },
-    { "id": "sample-2-7", "classId": "design-01", "name": "线性代数", "teacher": "刘老师", "room": "教学楼 A205", "day": 4, "start": 2, "end": 3, "from": 1, "to": 18, "parity": "all", "color": "orange" },
-    { "id": "sample-2-8", "classId": "design-01", "name": "大学物理", "teacher": "赵老师", "room": "教学楼 C101", "day": 4, "start": 4, "end": 5, "from": 1, "to": 18, "parity": "all", "color": "rose" }
-  ],
-  "demo": true
+  "lessons": [],
+  "demo": false
 }

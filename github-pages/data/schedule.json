@@ -76,6 +76,34 @@
       "to": 18,
       "parity": "all",
       "color": "blue"
+    },
+    {
+      "id": "lesson-0f56d21c-db90-4280-b8dc-60a2a649f6f9",
+      "classId": "class-346d7df4-0c57-4107-9eca-1fa727ed919e",
+      "name": "思想道德与法治",
+      "teacher": "胡佳音",
+      "room": "二合堂",
+      "day": 1,
+      "start": 4,
+      "end": 5,
+      "from": 1,
+      "to": 18,
+      "parity": "all",
+      "color": "blue"
+    },
+    {
+      "id": "lesson-1892df5a-2d99-4f48-af8d-8c5606e3183c",
+      "classId": "class-346d7df4-0c57-4107-9eca-1fa727ed919e",
+      "name": "体育",
+      "teacher": "于弘",
+      "room": "操场",
+      "day": 1,
+      "start": 2,
+      "end": 3,
+      "from": 1,
+      "to": 18,
+      "parity": "all",
+      "color": "violet"
     }
   ],
   "demo": false

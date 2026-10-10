@@ -62,6 +62,21 @@
       "note": "2026"
     }
   ],
-  "lessons": [],
+  "lessons": [
+    {
+      "id": "lesson-5ba5de5c-19bc-4e21-bcef-194a46eb1287",
+      "classId": "class-346d7df4-0c57-4107-9eca-1fa727ed919e",
+      "name": "思想道德与法治",
+      "teacher": "胡佳音",
+      "room": "二合堂",
+      "day": 0,
+      "start": 4,
+      "end": 5,
+      "from": 1,
+      "to": 18,
+      "parity": "all",
+      "color": "blue"
+    }
+  ],
   "demo": false
 }

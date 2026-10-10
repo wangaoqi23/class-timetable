@@ -31,6 +31,8 @@ assert.match(indexHtml, /assets\/app\.js/);
 assert.match(indexHtml, /Content-Security-Policy/);
 assert.match(adminHtml, /\.\.\/assets\/admin\.js/);
 assert.match(adminHtml, /https:\/\/api\.github\.com/);
+assert.match(adminHtml, /scopes=public_repo/);
+assert.match(adminHtml, /ghp_/);
 assert.match(adminSource, /sessionStorage\.setItem\('timetable_github_pat'/);
 assert.doesNotMatch(adminSource, /localStorage\.setItem\('timetable_github_pat'/);
 assert.doesNotMatch(appSource, /innerHTML\s*=/, 'public renderer should not inject schedule text as HTML');

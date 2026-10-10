@@ -13,11 +13,13 @@
 
 ## 管理后台
 
-管理页通过 GitHub Contents API 直接修改仓库中的 `github-pages/data/schedule.json`。使用前创建一个 fine-grained personal access token：
+管理页通过 GitHub Contents API 直接修改仓库中的 `github-pages/data/schedule.json`。优先创建一个 fine-grained personal access token：
 
 - Repository access 只选择本课程表仓库。
 - Repository permissions 中把 **Contents** 设为 **Read and write**。
 - 建议设置较短的有效期，并在不再使用时删除令牌。
+
+如果账号中没有 Fine-grained PAT 入口，可以使用 [Classic token](https://github.com/settings/tokens/new?description=Class%20Timetable%20Admin&scopes=public_repo)，只勾选 `public_repo`。管理后台同时接受 `github_pat_…` 和 `ghp_…` 两种令牌。
 
 令牌只写入当前标签页的 `sessionStorage`，不会加入课表 JSON、Git 提交或网址。仓库名称和分支保存在浏览器 `localStorage`，便于下次填写。
 

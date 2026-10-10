@@ -47,13 +47,14 @@
           <button class="button" id="disconnect" type="button" hidden>断开连接</button>
         </div>
         <p class="panel-help">
-          令牌只保存在当前标签页的 <code>sessionStorage</code> 中，关闭标签页后即清除。请使用仅授权此仓库、Contents 为 Read and write 的 fine-grained PAT。
+          令牌只保存在当前标签页的 <code>sessionStorage</code> 中，关闭标签页后即清除。推荐使用仅授权此仓库、Contents 为 Read and write 的 Fine-grained PAT；如果你的账号没有该入口，也可以
+          <a href="https://github.com/settings/tokens/new?description=Class%20Timetable%20Admin&amp;scopes=public_repo" target="_blank" rel="noopener noreferrer">创建 Classic token</a>，只保留 <code>public_repo</code> 权限。Classic token 会覆盖你有写权限的全部公开仓库，建议设置到期时间。
         </p>
         <form class="connection-form" id="connection-form">
           <label>仓库所有者<input id="repo-owner" autocomplete="username" required placeholder="例如 wangaoqi23" /></label>
           <label>仓库名称<input id="repo-name" required placeholder="例如 class-timetable" /></label>
           <label>分支<input id="repo-branch" required value="main" /></label>
-          <label class="token-field">Fine-grained PAT<input id="github-token" type="password" autocomplete="off" required placeholder="github_pat_…" /></label>
+          <label class="token-field">GitHub 访问令牌（Fine-grained 或 Classic）<input id="github-token" type="password" autocomplete="off" required placeholder="github_pat_… 或 ghp_…" /></label>
           <button class="button primary" id="connect" type="submit">连接并加载</button>
         </form>
       </section>

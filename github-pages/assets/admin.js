@@ -119,7 +119,7 @@
       }
       const hints = {
         401: '令牌无效或已过期。',
-        403: '令牌没有此仓库的 Contents 写入权限，或请求受到 GitHub 限制。',
+        403: '令牌权限不足：Fine-grained 需要 Contents 写入权限，Classic 需要 public_repo。',
         404: `找不到 ${DATA_PATH}，请检查仓库、分支和令牌授权范围。`,
         409: '仓库中的课表已被其他人更新，请重载后再编辑。',
       };
@@ -446,7 +446,7 @@
     try {
       normalizeConnection();
       const token = elements.token.value.trim();
-      if (!token) throw new Error('请输入 fine-grained PAT。');
+      if (!token) throw new Error('请输入 GitHub 访问令牌。');
       sessionStorage.setItem('timetable_github_pat', token);
       elements.token.value = '';
       await loadRepository();

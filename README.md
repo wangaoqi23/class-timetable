@@ -20,7 +20,7 @@ GitHub Pages 发布文件位于 `github-pages/`，每次后台保存课表后，
 
 ## GitHub Pages 管理
 
-打开上面的管理后台，填写仓库 `wangaoqi23/class-timetable`、分支 `main`，以及仅授权此仓库且 Contents 权限为 Read and write 的 fine-grained PAT。令牌只保存在当前标签页的 `sessionStorage`，不会写入源码、课表或网址。
+打开上面的管理后台，填写仓库 `wangaoqi23/class-timetable`、分支 `main`，以及仅授权此仓库且 Contents 权限为 Read and write 的 Fine-grained PAT。没有 Fine-grained PAT 时，也可以使用只勾选 `public_repo` 的 Classic token。令牌只保存在当前标签页的 `sessionStorage`，不会写入源码、课表或网址。
 
 详细说明见 [`github-pages/README.md`](github-pages/README.md)。
 

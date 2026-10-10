@@ -592,6 +592,12 @@ a:focus-visible {
   line-height: 1.6;
 }
 
+.panel-help a {
+  color: var(--primary);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
 code {
   padding: 2px 5px;
   border-radius: 5px;

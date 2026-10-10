@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'self' https://api.github.com; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'"
+    />
+    <meta name="description" content="GitHub Pages 课程表管理后台" />
+    <title>课间 · 管理后台</title>
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../">
+        <span class="brand-mark" aria-hidden="true">课</span>
+        <span>课间</span>
+        <span class="brand-suffix">/ 管理后台</span>
+      </a>
+      <nav aria-label="主要导航">
+        <a class="nav-link" href="../">查看课表</a>
+        <a class="nav-link active" href="./">管理后台</a>
+      </nav>
+    </header>
+
+    <main class="shell admin-shell">
+      <section class="hero compact" aria-labelledby="admin-title">
+        <div>
+          <p class="eyebrow">SCHEDULE MANAGEMENT</p>
+          <h1 id="admin-title">课表管理后台</h1>
+          <p class="subtle">编辑结果会提交到仓库，并由 GitHub Actions 自动更新网站。</p>
+        </div>
+        <span class="connection-status" id="connection-status">尚未连接</span>
+      </section>
+
+      <div class="notice error-notice" id="admin-error" role="alert" hidden></div>
+      <div class="notice success-notice" id="admin-success" role="status" hidden></div>
+
+      <section class="panel connection-panel" aria-labelledby="connection-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">GITHUB CONNECTION</p>
+            <h2 id="connection-title">连接 GitHub 仓库</h2>
+          </div>
+          <button class="button" id="disconnect" type="button" hidden>断开连接</button>
+        </div>
+        <p class="panel-help">
+          令牌只保存在当前标签页的 <code>sessionStorage</code> 中，关闭标签页后即清除。请使用仅授权此仓库、Contents 为 Read and write 的 fine-grained PAT。
+        </p>
+        <form class="connection-form" id="connection-form">
+          <label>仓库所有者<input id="repo-owner" autocomplete="username" required placeholder="例如 wangaoqi23" /></label>
+          <label>仓库名称<input id="repo-name" required placeholder="例如 class-timetable" /></label>
+          <label>分支<input id="repo-branch" required value="main" /></label>
+          <label class="token-field">Fine-grained PAT<input id="github-token" type="password" autocomplete="off" required placeholder="github_pat_…" /></label>
+          <button class="button primary" id="connect" type="submit">连接并加载</button>
+        </form>
+      </section>
+
+      <div id="editor" hidden>
+        <section class="panel" aria-labelledby="settings-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">GENERAL</p>
+              <h2 id="settings-title">网站与学期</h2>
+            </div>
+          </div>
+          <div class="form-grid settings-grid">
+            <label>网站名称<input id="site-title" required maxlength="24" /></label>
+            <label>学期名称<input id="term-name" required maxlength="80" /></label>
+            <label>学期首个周一<input id="start-date" type="date" required /></label>
+            <label>教学周数<input id="week-count" type="number" min="1" max="30" required /></label>
+            <label class="full-field">节次与时间<textarea id="periods" rows="8" spellcheck="false" aria-describedby="periods-help"></textarea></label>
+          </div>
+          <p class="panel-help" id="periods-help">每行格式：节次名称 | 开始时间 | 结束时间，例如“第 1 节 | 08:00 | 08:45”。</p>
+        </section>
+
+        <section class="panel" aria-labelledby="classes-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">CLASSES</p>
+              <h2 id="classes-title">班级管理</h2>
+            </div>
+            <button class="button primary" id="add-class" type="button">新增班级</button>
+          </div>
+          <div class="class-admin" id="class-admin"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="lessons-title">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">COURSES</p>
+              <h2 id="lessons-title">课程管理</h2>
+              <p class="subtle" id="lesson-class-name"></p>
+            </div>
+            <button class="button primary" id="add-lesson" type="button">新增课程</button>
+          </div>
+          <div class="lesson-admin-list" id="lesson-admin-list"></div>
+        </section>
+
+        <section class="save-bar" aria-label="保存课表">
+          <div>
+            <strong id="dirty-label">当前没有未保存更改</strong>
+            <p>保存会向 <code>github-pages/data/schedule.json</code> 提交一次更新。</p>
+          </div>
+          <div class="save-actions">
+            <button class="button" id="reload-repository" type="button">放弃更改并重载</button>
+            <button class="button primary" id="save-repository" type="button" disabled>保存并提交</button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <dialog class="dialog editor-dialog" id="class-dialog">
+      <form id="class-form">
+        <button class="dialog-close" type="button" data-close-dialog="class-dialog" aria-label="关闭">×</button>
+        <p class="eyebrow">CLASS</p>
+        <h2 id="class-dialog-title">新增班级</h2>
+        <input id="class-id" type="hidden" />
+        <label>班级名称<input id="class-name" required maxlength="40" /></label>
+        <label>年级 / 备注<input id="class-note-input" maxlength="80" /></label>
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close-dialog="class-dialog">取消</button>
+          <button class="button primary" type="submit">保存班级</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="dialog editor-dialog" id="lesson-editor-dialog">
+      <form id="lesson-form">
+        <button class="dialog-close" type="button" data-close-dialog="lesson-editor-dialog" aria-label="关闭">×</button>
+        <p class="eyebrow">COURSE</p>
+        <h2 id="lesson-dialog-title">新增课程</h2>
+        <input id="lesson-id" type="hidden" />
+        <div class="form-grid">
+          <label class="full-field">课程名称<input id="lesson-name" required maxlength="60" /></label>
+          <label>任课教师<input id="lesson-teacher" maxlength="60" /></label>
+          <label>上课地点<input id="lesson-room" maxlength="80" /></label>
+          <label>星期<select id="lesson-day"></select></label>
+          <label>周次规则<select id="lesson-parity"><option value="all">每周</option><option value="odd">单周</option><option value="even">双周</option></select></label>
+          <label>起始节次<select id="lesson-start"></select></label>
+          <label>结束节次<select id="lesson-end"></select></label>
+          <label>起始教学周<input id="lesson-from" type="number" min="1" required /></label>
+          <label>结束教学周<input id="lesson-to" type="number" min="1" required /></label>
+          <label class="full-field">课程颜色<select id="lesson-color"><option value="blue">蓝色</option><option value="violet">紫色</option><option value="orange">橙色</option><option value="teal">绿色</option><option value="rose">粉色</option></select></label>
+        </div>
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close-dialog="lesson-editor-dialog">取消</button>
+          <button class="button primary" type="submit">保存课程</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="../assets/shared.js" defer></script>
+    <script src="../assets/admin.js" defer></script>
+  </body>
+</html>

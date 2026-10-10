@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'"
+    />
+    <meta name="description" content="支持多班级和周次切换的在线课程表" />
+    <title>课间 · 课程表</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="课程表首页">
+        <span class="brand-mark" aria-hidden="true">课</span>
+        <span id="brand-title">课间</span>
+        <span class="brand-suffix">/ 课程表</span>
+      </a>
+      <nav aria-label="主要导航">
+        <a class="nav-link active" href="./">查看课表</a>
+        <a class="nav-link" href="admin/">管理后台</a>
+      </nav>
+    </header>
+
+    <main class="shell">
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">CLASS SCHEDULE</p>
+          <h1 id="page-title">正在加载课表…</h1>
+          <p class="subtle" id="class-note">请选择班级和教学周查看课程安排</p>
+        </div>
+        <div class="controls" aria-label="课表筛选">
+          <label class="sr-only" for="class-select">选择班级</label>
+          <select id="class-select" disabled></select>
+          <div class="week-nav">
+            <button class="icon-button" id="previous-week" type="button" aria-label="上一周">‹</button>
+            <label class="sr-only" for="week-select">选择教学周</label>
+            <select id="week-select" disabled></select>
+            <button class="icon-button" id="next-week" type="button" aria-label="下一周">›</button>
+          </div>
+          <button class="button" id="current-week" type="button">回到本周</button>
+        </div>
+      </section>
+
+      <div class="notice demo-notice" id="demo-notice" hidden>
+        当前显示示例课表，管理员可以在管理后台替换为实际课程。
+      </div>
+      <div class="notice error-notice" id="error" role="alert" hidden>
+        <span id="error-text"></span>
+        <button class="button" id="retry" type="button">重新加载</button>
+      </div>
+
+      <section class="schedule-section" id="schedule-section" aria-label="每周课程表" hidden>
+        <div class="week-banner">
+          <div class="week-summary">
+            <span class="calendar-symbol" aria-hidden="true">▦</span>
+            <strong id="week-number"></strong>
+            <span class="badge" id="this-week-badge" hidden>本周</span>
+            <span class="term-label" id="term-label"></span>
+          </div>
+          <span class="course-count" id="course-count"></span>
+        </div>
+        <div class="board">
+          <div class="timetable-scroll">
+            <div class="timetable" id="timetable"></div>
+          </div>
+          <div class="mobile-schedule" id="mobile-schedule"></div>
+          <div class="empty-state" id="empty-state" hidden>这一周暂无课程安排。</div>
+          <div class="board-footer">
+            <span>点击课程卡片查看详情</span>
+            <span id="updated-at"></span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="dialog" id="lesson-dialog">
+      <form method="dialog">
+        <button class="dialog-close" value="close" aria-label="关闭">×</button>
+        <p class="eyebrow">COURSE DETAIL</p>
+        <h2 id="detail-name"></h2>
+        <p class="subtle" id="detail-class"></p>
+        <dl class="details" id="detail-list"></dl>
+      </form>
+    </dialog>
+
+    <script src="assets/shared.js" defer></script>
+    <script src="assets/app.js" defer></script>
+  </body>
+</html>

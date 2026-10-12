@@ -5,6 +5,9 @@
   const DATA_PATH = 'github-pages/data/schedule.json';
   const API_VERSION = '2022-11-28';
   const LOCAL_STATE_KEY = 'timetable_local_state_v1';
+  const LOCAL_ADMIN_KEY = 'timetable_admin_auth_v1';
+  const LOCAL_ADMIN_SESSION_KEY = 'timetable_admin_session_v1';
+  const LOCAL_ADMIN_SESSION_MS = 8 * 60 * 60 * 1000;
   const PASSWORD_ITERATIONS = 100000;
   const state = {
     schedule: null,
@@ -19,6 +22,16 @@
 
   const byId = (id) => document.getElementById(id);
   const elements = {
+    adminAuthStatus: byId('admin-auth-status'),
+    localAdminTitle: byId('local-admin-auth-title'),
+    localAdminHelp: byId('local-admin-auth-help'),
+    localAdminForm: byId('local-admin-auth-form'),
+    localAdminPassword: byId('local-admin-password'),
+    localAdminConfirmField: byId('local-admin-confirm-field'),
+    localAdminConfirm: byId('local-admin-confirm'),
+    localAdminSubmit: byId('local-admin-submit'),
+    localAdminSession: byId('local-admin-session'),
+    localAdminLogout: byId('local-admin-logout'),
     connectionStatus: byId('connection-status'),
     connectionForm: byId('connection-form'),
     owner: byId('repo-owner'),
@@ -77,6 +90,7 @@
   };
 
   let accountClasses = [];
+  let adminSessionTimer = 0;
 
   function showMessage(kind, message) {
     const target = kind === 'error' ? elements.error : elements.success;
@@ -252,7 +266,10 @@
   }
 
   function renderAccounts() {
-    if (!state.schedule) return;
+    if (!isLocalAdminAuthenticated()) {
+      lockAccountManagement();
+      return;
+    }
     const accountState = loadAccountState();
     elements.accountList.replaceChildren();
     elements.accountSummary.textContent = accountState.users.length
@@ -326,6 +343,11 @@
   }
 
   function openAccountDialog(user) {
+    if (!isLocalAdminAuthenticated()) {
+      lockAccountManagement();
+      showMessage('error', '管理员登录已失效，请重新登录。');
+      return;
+    }
     elements.accountId.value = user.id;
     elements.accountUsername.textContent = user.username;
     elements.accountFullName.value = user.fullName || user.username;
@@ -341,6 +363,12 @@
     return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
   }
 
+  function fromBase64Url(value) {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  }
+
   async function passwordHash(password, salt) {
     const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
     const bits = await crypto.subtle.deriveBits(
@@ -351,8 +379,123 @@
     return bytesToBase64Url(new Uint8Array(bits));
   }
 
+  function loadAdminCredential() {
+    try {
+      const credential = JSON.parse(localStorage.getItem(LOCAL_ADMIN_KEY) || 'null');
+      if (!credential || typeof credential.salt !== 'string' || typeof credential.hash !== 'string') return null;
+      return credential;
+    } catch {
+      return null;
+    }
+  }
+
+  function isLocalAdminAuthenticated() {
+    const credential = loadAdminCredential();
+    if (!credential) return false;
+    try {
+      const session = JSON.parse(sessionStorage.getItem(LOCAL_ADMIN_SESSION_KEY) || 'null');
+      return session?.fingerprint === credential.hash && Number(session.expiresAt) > Date.now();
+    } catch {
+      return false;
+    }
+  }
+
+  function lockAccountManagement() {
+    clearTimeout(adminSessionTimer);
+    adminSessionTimer = 0;
+    sessionStorage.removeItem(LOCAL_ADMIN_SESSION_KEY);
+    elements.accountPanel.hidden = true;
+    elements.accountList.replaceChildren();
+    elements.localAdminSession.hidden = true;
+    elements.localAdminForm.hidden = false;
+    elements.adminAuthStatus.textContent = '未登录';
+    elements.adminAuthStatus.classList.remove('connected');
+    const hasCredential = Boolean(loadAdminCredential());
+    elements.localAdminTitle.textContent = hasCredential ? '管理员登录' : '设置管理员密码';
+    elements.localAdminHelp.textContent = hasCredential
+      ? '输入本机管理员密码后，才能查看和管理当前浏览器中的账号。'
+      : '首次使用请设置本机管理员密码。密码只保存在当前浏览器中，并经过加密摘要处理。';
+    elements.localAdminConfirmField.hidden = hasCredential;
+    elements.localAdminConfirm.required = !hasCredential;
+    elements.localAdminPassword.autocomplete = hasCredential ? 'current-password' : 'new-password';
+    elements.localAdminSubmit.textContent = hasCredential ? '登录后台' : '设置密码并进入';
+  }
+
+  function unlockAccountManagement() {
+    clearTimeout(adminSessionTimer);
+    try {
+      const session = JSON.parse(sessionStorage.getItem(LOCAL_ADMIN_SESSION_KEY) || 'null');
+      const remaining = Math.max(0, Number(session?.expiresAt) - Date.now());
+      adminSessionTimer = window.setTimeout(() => {
+        lockAccountManagement();
+        showMessage('error', '管理员登录已过期，请重新登录。');
+      }, remaining);
+    } catch {
+      lockAccountManagement();
+      return;
+    }
+    elements.localAdminForm.hidden = true;
+    elements.localAdminSession.hidden = false;
+    elements.accountPanel.hidden = false;
+    elements.adminAuthStatus.textContent = '管理员已登录';
+    elements.adminAuthStatus.classList.add('connected');
+    renderAccounts();
+  }
+
+  function restoreAdminSession() {
+    if (isLocalAdminAuthenticated()) unlockAccountManagement();
+    else lockAccountManagement();
+  }
+
+  async function submitLocalAdminAuth(event) {
+    event.preventDefault();
+    clearMessages();
+    const password = elements.localAdminPassword.value;
+    if (password.length < 8 || password.length > 128) {
+      elements.localAdminPassword.setCustomValidity('管理员密码需为 8–128 位。');
+      elements.localAdminPassword.reportValidity();
+      return;
+    }
+    let credential = loadAdminCredential();
+    if (!credential) {
+      if (password !== elements.localAdminConfirm.value) {
+        elements.localAdminConfirm.setCustomValidity('两次输入的密码不一致。');
+        elements.localAdminConfirm.reportValidity();
+        return;
+      }
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      credential = {
+        version: 1,
+        salt: bytesToBase64Url(salt),
+        hash: await passwordHash(password, salt),
+        createdAt: new Date().toISOString(),
+      };
+      localStorage.setItem(LOCAL_ADMIN_KEY, JSON.stringify(credential));
+    } else {
+      const candidate = await passwordHash(password, fromBase64Url(credential.salt));
+      if (candidate !== credential.hash) {
+        elements.localAdminPassword.setCustomValidity('管理员密码不正确。');
+        elements.localAdminPassword.reportValidity();
+        return;
+      }
+    }
+    sessionStorage.setItem(LOCAL_ADMIN_SESSION_KEY, JSON.stringify({
+      fingerprint: credential.hash,
+      expiresAt: Date.now() + LOCAL_ADMIN_SESSION_MS,
+    }));
+    elements.localAdminPassword.value = '';
+    elements.localAdminConfirm.value = '';
+    unlockAccountManagement();
+    showMessage('success', '管理员登录成功，现在可以管理本机账号。');
+  }
+
   async function saveAccount(event) {
     event.preventDefault();
+    if (!isLocalAdminAuthenticated()) {
+      lockAccountManagement();
+      showMessage('error', '管理员登录已失效，请重新登录。');
+      return;
+    }
     const accountState = loadAccountState();
     const user = accountState.users.find((item) => item.id === elements.accountId.value);
     if (!user) {
@@ -395,6 +538,11 @@
   }
 
   function deleteAccount(user) {
+    if (!isLocalAdminAuthenticated()) {
+      lockAccountManagement();
+      showMessage('error', '管理员登录已失效，请重新登录。');
+      return;
+    }
     const accountState = loadAccountState();
     const scheduleCount = accountState.schedules.filter((item) => item.userId === user.id).length;
     if (!confirm(`删除账号“${user.username}”及其 ${scheduleCount} 份个人课表？此操作无法撤销。`)) return;
@@ -501,8 +649,6 @@
     fillSettings();
     renderClasses();
     renderLessons();
-    renderAccounts();
-    elements.accountPanel.hidden = false;
     elements.editor.hidden = false;
     elements.disconnect.hidden = false;
     elements.connectionStatus.textContent = `已连接 ${state.owner}/${state.repo}`;
@@ -600,11 +746,11 @@
 
   async function loadRepository() {
     clearMessages();
-    setBusy(true, '正在验证管理员…');
+    setBusy(true, '正在连接仓库…');
     try {
       const repository = await githubRequest(repositoryApiUrl());
       if (!repository.permissions || (!repository.permissions.push && !repository.permissions.admin)) {
-        throw new Error('管理员认证失败：当前 GitHub 账号没有此仓库的写入权限。');
+        throw new Error('当前 GitHub 账号没有此仓库的写入权限。');
       }
       const file = await githubRequest(apiUrl());
       if (file.type !== 'file' || typeof file.content !== 'string' || typeof file.sha !== 'string') throw new Error('GitHub 返回的课表文件格式无效。');
@@ -617,7 +763,7 @@
       await loadAccountClasses();
       persistConnectionFields();
       renderEditor();
-      showMessage('success', `管理员身份已验证，已加载 ${state.owner}/${state.repo}@${state.branch}。`);
+      showMessage('success', `已连接并加载 ${state.owner}/${state.repo}@${state.branch}。`);
     } finally {
       setBusy(false, state.schedule ? `已连接 ${state.owner}/${state.repo}` : '连接失败');
     }
@@ -678,10 +824,8 @@
     state.sha = '';
     state.dirty = false;
     elements.editor.hidden = true;
-    elements.accountPanel.hidden = true;
-    elements.accountList.replaceChildren();
     elements.disconnect.hidden = true;
-    elements.connectionStatus.textContent = '未认证';
+    elements.connectionStatus.textContent = '未连接';
     elements.connectionStatus.classList.remove('connected');
     clearMessages();
   });
@@ -777,6 +921,15 @@
   elements.lessonName.addEventListener('input', () => elements.lessonName.setCustomValidity(''));
   elements.accountFullName.addEventListener('input', () => elements.accountFullName.setCustomValidity(''));
   elements.accountPassword.addEventListener('input', () => elements.accountPassword.setCustomValidity(''));
+  elements.localAdminPassword.addEventListener('input', () => elements.localAdminPassword.setCustomValidity(''));
+  elements.localAdminConfirm.addEventListener('input', () => elements.localAdminConfirm.setCustomValidity(''));
+  elements.localAdminForm.addEventListener('submit', (event) => {
+    submitLocalAdminAuth(event).catch(() => showMessage('error', '管理员登录失败，请稍后重试。'));
+  });
+  elements.localAdminLogout.addEventListener('click', () => {
+    lockAccountManagement();
+    clearMessages();
+  });
   elements.accountForm.addEventListener('submit', (event) => {
     saveAccount(event).catch(() => showMessage('error', '账号保存失败，请稍后重试。'));
   });
@@ -797,5 +950,5 @@
   });
 
   restoreConnectionFields();
-  loadAccountClasses();
+  loadAccountClasses().finally(restoreAdminSession);
 })();

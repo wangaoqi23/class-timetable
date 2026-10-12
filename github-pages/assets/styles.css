@@ -614,6 +614,39 @@ code {
   gap: 16px;
 }
 
+.local-admin-form {
+  display: grid;
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 16px;
+}
+
+.local-admin-session,
+.panel-heading-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.local-admin-session {
+  padding: 14px 16px;
+  border: 1px solid #a9dfd1;
+  border-radius: 12px;
+  background: var(--success-soft);
+}
+
+.local-admin-session strong,
+.local-admin-session span {
+  display: block;
+}
+
+.local-admin-session span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .connection-form {
   grid-template-columns: 1fr 1.25fr 0.7fr;
 }
@@ -1826,6 +1859,7 @@ textarea {
   }
 
   .connection-form,
+  .local-admin-form,
   .form-grid,
   .settings-grid,
   .admin-lesson,
@@ -1836,6 +1870,12 @@ textarea {
   .connection-form .token-field,
   .full-field {
     grid-column: auto;
+  }
+
+  .local-admin-session,
+  .panel-heading-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .admin-lesson-actions {

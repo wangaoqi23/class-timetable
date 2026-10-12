@@ -30,13 +30,32 @@
         <div>
           <p class="eyebrow">SCHEDULE MANAGEMENT</p>
           <h1 id="admin-title">课表管理后台</h1>
-          <p class="subtle">验证管理员身份后，可管理本机账号并编辑公共课表。</p>
+          <p class="subtle">使用本机管理员密码管理账号；连接 GitHub 后可发布公共课表。</p>
         </div>
-        <span class="connection-status" id="connection-status">未认证</span>
+        <span class="connection-status" id="admin-auth-status">未登录</span>
       </section>
 
       <div class="notice error-notice" id="admin-error" role="alert" hidden></div>
       <div class="notice success-notice" id="admin-success" role="status" hidden></div>
+
+      <section class="panel local-admin-auth-panel" aria-labelledby="local-admin-auth-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">LOCAL ADMIN LOGIN</p>
+            <h2 id="local-admin-auth-title">设置管理员密码</h2>
+          </div>
+        </div>
+        <p class="panel-help" id="local-admin-auth-help">首次使用请设置本机管理员密码。密码只保存在当前浏览器中，并经过加密摘要处理。</p>
+        <form class="local-admin-form" id="local-admin-auth-form">
+          <label>管理员密码<input id="local-admin-password" type="password" required minlength="8" maxlength="128" autocomplete="current-password" placeholder="至少 8 位" /></label>
+          <label id="local-admin-confirm-field">确认密码<input id="local-admin-confirm" type="password" required minlength="8" maxlength="128" autocomplete="new-password" placeholder="再次输入密码" /></label>
+          <button class="button primary" id="local-admin-submit" type="submit">设置密码并进入</button>
+        </form>
+        <div class="local-admin-session" id="local-admin-session" hidden>
+          <div><strong>管理员已登录</strong><span>当前标签页可以管理账号。</span></div>
+          <button class="button" id="local-admin-logout" type="button">退出管理员</button>
+        </div>
+      </section>
 
       <section class="panel account-admin-panel" id="account-admin-panel" aria-labelledby="accounts-title" hidden>
         <div class="panel-heading">
@@ -54,13 +73,16 @@
       <section class="panel connection-panel" aria-labelledby="connection-title">
         <div class="panel-heading">
           <div>
-            <p class="eyebrow">ADMIN AUTHENTICATION</p>
-            <h2 id="connection-title">管理员认证</h2>
+            <p class="eyebrow">GITHUB PUBLISHING</p>
+            <h2 id="connection-title">公共课表发布（可选）</h2>
           </div>
-          <button class="button" id="disconnect" type="button" hidden>断开连接</button>
+          <div class="panel-heading-actions">
+            <span class="connection-status" id="connection-status">未连接</span>
+            <button class="button" id="disconnect" type="button" hidden>断开连接</button>
+          </div>
         </div>
         <p class="panel-help">
-          系统会验证你的 GitHub 账号是否拥有此仓库的写入权限，认证成功后才显示账号管理。令牌只保存在当前标签页的 <code>sessionStorage</code> 中，关闭标签页后即清除。推荐使用仅授权此仓库、Contents 为 Read and write 的 Fine-grained PAT；如果你的账号没有该入口，也可以
+          此功能仅用于编辑并发布公共课表，不影响账号管理。令牌只保存在当前标签页的 <code>sessionStorage</code> 中，关闭标签页后即清除。推荐使用仅授权此仓库、Contents 为 Read and write 的 Fine-grained PAT；如果你的账号没有该入口，也可以
           <a href="https://github.com/settings/tokens/new?description=Class%20Timetable%20Admin&amp;scopes=public_repo" target="_blank" rel="noopener noreferrer">创建 Classic token</a>，只保留 <code>public_repo</code> 权限。Classic token 会覆盖你有写权限的全部公开仓库，建议设置到期时间。
         </p>
         <form class="connection-form" id="connection-form">
@@ -68,7 +90,7 @@
           <label>仓库名称<input id="repo-name" required placeholder="例如 class-timetable" /></label>
           <label>分支<input id="repo-branch" required value="main" /></label>
           <label class="token-field">GitHub 访问令牌（Fine-grained 或 Classic）<input id="github-token" type="password" autocomplete="off" required placeholder="github_pat_… 或 ghp_…" /></label>
-          <button class="button primary" id="connect" type="submit">验证并进入后台</button>
+          <button class="button primary" id="connect" type="submit">连接并加载课表</button>
         </form>
       </section>
 

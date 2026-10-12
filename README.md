@@ -5,16 +5,16 @@
 ## 在线地址
 
 - 网站入口：<https://wangaoqi23.github.io/class-timetable/>
-- 登录 / 注册：<https://class-timetable.wangaoqi23.workers.dev/login/>
-- 个人课表：<https://class-timetable.wangaoqi23.workers.dev/app/>
-- 登录后公共课表：<https://class-timetable.wangaoqi23.workers.dev/>
+- 登录 / 注册：<https://wangaoqi23.github.io/class-timetable/login/>
+- 个人课表：<https://wangaoqi23.github.io/class-timetable/app/>
+- 公共课表：<https://wangaoqi23.github.io/class-timetable/>
 - GitHub 课表管理后台：<https://wangaoqi23.github.io/class-timetable/admin/>
 
-网站入口会先要求注册；已有会话会自动进入个人课表。登录后的公共课表从 GitHub 仓库读取最新数据，登录 Cookie、个人数据和 API 保持在同一个 Cloudflare Worker 域名下。
+GitHub Pages 版本不再依赖国内网络不稳定的 `workers.dev`。首次打开会要求注册；账号和个人课表保存在当前浏览器中，登录状态保存 30 天，分享链接可在其他设备预览并一键导入。
 
 ## 功能
 
-- 注册、登录和 30 天安全会话；已经登录时自动进入个人课表。
+- 注册、登录和 30 天本地会话；已经登录时自动进入个人课表。
 - 每位用户可创建多份独立课表，并自行修改班级、课程、周次、单双周、教室、教师和每日作息。
 - 生成课表分享链接；接收者可先预览，再一键复制到自己的账户中独立编辑。
 - 按班级和教学周查看课程，桌面显示周表，手机显示按天日程卡片。

@@ -94,6 +94,7 @@ assert.equal(
 
 function loadApiAt(pathname, search = '', hash = '', origin = 'https://wangaoqi23.github.io') {
   let replaced = '';
+  const storage = new Map();
   const pageContext = {
     window: {
       location: {
@@ -105,11 +106,21 @@ function loadApiAt(pathname, search = '', hash = '', origin = 'https://wangaoqi2
         replace(value) { replaced = value; },
       },
     },
-    document: { cookie: '', querySelector: () => ({ content: '../' }) },
+    document: { cookie: '', querySelector: () => ({ content: pathname === '/class-timetable/' ? './' : '../' }) },
+    localStorage: {
+      getItem: (key) => storage.has(key) ? storage.get(key) : null,
+      setItem: (key, value) => storage.set(key, String(value)),
+      removeItem: (key) => storage.delete(key),
+    },
     Headers,
     FormData,
     URL,
     Set,
+    TextEncoder,
+    TextDecoder,
+    btoa,
+    atob,
+    crypto: webcrypto,
     fetch: async () => { throw new Error('unexpected API request'); },
   };
   vm.createContext(pageContext);
@@ -117,14 +128,14 @@ function loadApiAt(pathname, search = '', hash = '', origin = 'https://wangaoqi2
   return { context: pageContext, api: pageContext.window.TimetableApi, replaced: () => replaced };
 }
 
-for (const [pathname, search, hash, expected] of [
-  ['/class-timetable/app/', '?schedule=123', '', 'https://class-timetable.wangaoqi23.workers.dev/app/?schedule=123'],
-  ['/class-timetable/import/', '', '#share-token', 'https://class-timetable.wangaoqi23.workers.dev/import/#share-token'],
-  ['/class-timetable/login/', '?mode=register', '#next=app%2F', 'https://class-timetable.wangaoqi23.workers.dev/login/?mode=register#next=app%2F'],
+for (const [pathname, search, hash] of [
+  ['/class-timetable/app/', '?schedule=123', ''],
+  ['/class-timetable/import/', '', '#share-token'],
+  ['/class-timetable/login/', '?mode=register', '#next=app%2F'],
 ]) {
   const page = loadApiAt(pathname, search, hash);
-  assert.equal(page.api.redirectAccountPageToPrimary(), true);
-  assert.equal(page.replaced(), expected, 'account routes should move from GitHub Pages to the primary app');
+  assert.equal(page.api.redirectAccountPageToPrimary(), false);
+  assert.equal(page.replaced(), '', 'account routes should remain on GitHub Pages');
 }
 
 const outsideMirror = loadApiAt('/class-timetable-evil/app/');
@@ -133,17 +144,42 @@ assert.equal(outsideMirror.api.redirectAccountPageToPrimary(), false);
 assert.equal(outsideMirror.replaced(), '');
 
 const nestedPath = loadApiAt('/class-timetable/app//evil');
-assert.equal(nestedPath.api.redirectAccountPageToPrimary(), true);
-assert.equal(new URL(nestedPath.replaced()).origin, 'https://class-timetable.wangaoqi23.workers.dev', 'redirect paths must not change the trusted Worker origin');
+assert.equal(nestedPath.api.redirectAccountPageToPrimary(), false);
+assert.equal(nestedPath.replaced(), '');
 assert.equal(new URL(nestedPath.api.primaryAppUrl('//evil')).origin, 'https://class-timetable.wangaoqi23.workers.dev');
 
 const mirrorRoot = loadApiAt('/class-timetable/');
 let mirrorRequestCount = 0;
 mirrorRoot.context.document.querySelector = () => null;
-mirrorRoot.context.window.TimetableApi.request = async () => { mirrorRequestCount += 1; };
+mirrorRoot.context.window.TimetableApi.request = async () => { mirrorRequestCount += 1; const error = new Error('signed out'); error.status = 401; throw error; };
 vm.runInContext(sessionRedirectSource, mirrorRoot.context, { filename: 'session-redirect.js' });
-assert.equal(mirrorRoot.replaced(), 'https://class-timetable.wangaoqi23.workers.dev/login/?mode=register', 'first-time visitors should start on registration');
-assert.equal(mirrorRequestCount, 0, 'the GitHub mirror must not call an API that only exists on the Worker');
+await new Promise((resolve) => setTimeout(resolve, 0));
+assert.equal(mirrorRoot.replaced(), 'https://wangaoqi23.github.io/class-timetable/login/?mode=register', 'first-time visitors should start on local registration');
+assert.equal(mirrorRequestCount, 1, 'the GitHub site should check its local account state');
+
+const localAccount = loadApiAt('/class-timetable/app/');
+const localApi = localAccount.api;
+const credentials = JSON.stringify({ username: '测试用户', password: 'Example-pass-123' });
+const registration = await localApi.request('/api/auth/register', { method: 'POST', auth: false, body: credentials });
+assert.equal(registration.user.username, '测试用户');
+assert.equal((await localApi.request('/api/auth/me')).user.username, '测试用户');
+const created = await localApi.request('/api/schedules', {
+  method: 'POST',
+  body: JSON.stringify({ name: '测试课表', data: schedule }),
+});
+assert.equal(created.schedule.name, '测试课表');
+const shared = await localApi.request(`/api/schedules/${created.schedule.id}/shares`, { method: 'POST', body: '{}' });
+const sharedUrl = new URL(shared.share.shareUrl);
+assert.equal(sharedUrl.origin, 'https://wangaoqi23.github.io');
+assert.equal(sharedUrl.pathname, '/class-timetable/import/');
+const preview = await localApi.request('/api/shares/preview', {
+  method: 'POST', auth: false, body: JSON.stringify({ token: sharedUrl.hash.slice(1) }),
+});
+assert.equal(preview.share.data.title, schedule.title);
+await localApi.request('/api/auth/logout', { method: 'POST' });
+await assert.rejects(localApi.request('/api/auth/me', { auth: false }), (error) => error.status === 401);
+await localApi.request('/api/auth/login', { method: 'POST', auth: false, body: credentials });
+assert.equal((await localApi.request('/api/schedules')).schedules.length, 1);
 
 const workerPage = loadApiAt('/', '', '', 'https://class-timetable.wangaoqi23.workers.dev');
 assert.equal(workerPage.api.isGitHubPagesMirror(), false);
@@ -182,7 +218,7 @@ assert.equal(utils.weekDates(schedule, 1).length, 7, 'a week should expose seven
 assert.match(indexHtml, /assets\/shared\.js/);
 assert.match(indexHtml, /assets\/app\.js/);
 assert.match(indexHtml, /id="account-link"/);
-assert.match(indexHtml, /href="https:\/\/class-timetable\.wangaoqi23\.workers\.dev\/login\/\?mode=register"/);
+assert.match(indexHtml, /href="login\/\?mode=register"/);
 assert.match(indexHtml, /assets\/api-client\.js/);
 assert.match(indexHtml, /assets\/session-redirect\.js/);
 assert.match(indexHtml, /Content-Security-Policy/);
@@ -197,7 +233,10 @@ assert.match(apiClientSource, /credentials:\s*'same-origin'/, 'API requests shou
 assert.match(apiClientSource, /X-CSRF-Token/);
 assert.match(apiClientSource, /document\.cookie/);
 assert.match(apiClientSource, /\/api\//);
-assert.doesNotMatch(apiClientSource, /localStorage|sessionStorage|Authorization|Bearer|API_BASE_URL/);
+assert.match(apiClientSource, /localStorage/);
+assert.match(apiClientSource, /PBKDF2/);
+assert.match(apiClientSource, /LOCAL_SESSION_MS/);
+assert.doesNotMatch(apiClientSource, /Authorization|Bearer|API_BASE_URL/);
 assert.match(authSource, /\/api\/auth\/me/);
 assert.match(authSource, /redirectAccountPageToPrimary\(\)/);
 assert.match(authSource, /get\('mode'\) === 'login' \? 'login' : 'register'/);
@@ -250,4 +289,4 @@ assert.match(workflow, /actions\/upload-pages-artifact@v4/);
 assert.match(workflow, /actions\/deploy-pages@v4/);
 assert.match(workflow, /path: github-pages/);
 
-console.log('GitHub Pages checks passed: data, account cookies, CSRF, sharing, responsive pages, CSP, and deployment workflow.');
+console.log('GitHub Pages checks passed: data, local accounts, sharing, responsive pages, CSP, and deployment workflow.');

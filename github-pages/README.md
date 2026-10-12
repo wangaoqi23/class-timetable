@@ -1,6 +1,8 @@
 # GitHub Pages 课程表
 
-这个目录包含 GitHub Pages 网站入口和 Cloudflare Worker 同源提供的账户前端资源。访问入口会先进入注册页；注册、登录、公共课表、个人课表与分享导入在 <https://class-timetable.wangaoqi23.workers.dev/> 使用同源 `/api`。
+这个目录包含可直接运行的 GitHub Pages 课程表网站。公共课表从静态 JSON 加载；注册、登录和个人课表使用浏览器本地存储，避免依赖国内网络不稳定的 `workers.dev` 域名。分享链接把课表数据放在 URL 片段中，可在另一台设备预览并导入。
+
+本地账号只在当前浏览器有效，登录状态保存 30 天。清除浏览器站点数据会同时删除本地账号和个人课表。
 
 ## 发布
 

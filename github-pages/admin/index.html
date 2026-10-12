@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; connect-src 'self' https://api.github.com; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'"
+      content="default-src 'self'; connect-src 'self' https://api.github.com https://class-timetable.wangaoqi23.workers.dev; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'"
     />
     <meta name="description" content="GitHub Pages 课程表管理后台" />
     <title>课间 · 管理后台</title>
@@ -31,7 +31,7 @@
         <div>
           <p class="eyebrow">SCHEDULE MANAGEMENT</p>
           <h1 id="admin-title">课表管理后台</h1>
-          <p class="subtle">使用本机管理员密码管理账号；连接 GitHub 后可发布公共课表。</p>
+          <p class="subtle">管理员密码全站只设置一次；认证后可管理账号并发布公共课表。</p>
         </div>
         <span class="connection-status" id="admin-auth-status">未登录</span>
       </section>
@@ -43,11 +43,12 @@
         <div class="panel-heading">
           <div>
             <p class="eyebrow">LOCAL ADMIN LOGIN</p>
-            <h2 id="local-admin-auth-title">设置管理员密码</h2>
+            <h2 id="local-admin-auth-title">正在检查管理员状态</h2>
           </div>
         </div>
-        <p class="panel-help" id="local-admin-auth-help">首次使用请设置本机管理员密码。密码只保存在当前浏览器中，并经过加密摘要处理。</p>
-        <form class="local-admin-form" id="local-admin-auth-form">
+        <p class="panel-help" id="local-admin-auth-help">正在连接管理员认证服务…</p>
+        <form class="local-admin-form" id="local-admin-auth-form" hidden>
+          <label id="local-admin-setup-key-field" hidden>首次设置码<input id="local-admin-setup-key" type="password" minlength="12" maxlength="128" autocomplete="one-time-code" placeholder="输入站长专用设置码" /></label>
           <label>管理员密码<input id="local-admin-password" type="password" required minlength="8" maxlength="128" autocomplete="current-password" placeholder="至少 8 位" /></label>
           <label id="local-admin-confirm-field">确认密码<input id="local-admin-confirm" type="password" required minlength="8" maxlength="128" autocomplete="new-password" placeholder="再次输入密码" /></label>
           <button class="button primary" id="local-admin-submit" type="submit">设置密码并进入</button>

@@ -5,9 +5,8 @@
   const DATA_PATH = 'github-pages/data/schedule.json';
   const API_VERSION = '2022-11-28';
   const LOCAL_STATE_KEY = 'timetable_local_state_v1';
-  const LOCAL_ADMIN_KEY = 'timetable_admin_auth_v1';
+  const ADMIN_API = 'https://class-timetable.wangaoqi23.workers.dev/api/admin';
   const LOCAL_ADMIN_SESSION_KEY = 'timetable_admin_session_v1';
-  const LOCAL_ADMIN_SESSION_MS = 8 * 60 * 60 * 1000;
   const PASSWORD_ITERATIONS = 100000;
   const state = {
     schedule: null,
@@ -26,6 +25,8 @@
     localAdminTitle: byId('local-admin-auth-title'),
     localAdminHelp: byId('local-admin-auth-help'),
     localAdminForm: byId('local-admin-auth-form'),
+    localAdminSetupKeyField: byId('local-admin-setup-key-field'),
+    localAdminSetupKey: byId('local-admin-setup-key'),
     localAdminPassword: byId('local-admin-password'),
     localAdminConfirmField: byId('local-admin-confirm-field'),
     localAdminConfirm: byId('local-admin-confirm'),
@@ -91,6 +92,8 @@
 
   let accountClasses = [];
   let adminSessionTimer = 0;
+  let adminInitialized = false;
+  let adminStatusLoaded = false;
 
   function showMessage(kind, message) {
     const target = kind === 'error' ? elements.error : elements.success;
@@ -363,12 +366,6 @@
     return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
   }
 
-  function fromBase64Url(value) {
-    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
-    const binary = atob(normalized + '='.repeat((4 - normalized.length % 4) % 4));
-    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-  }
-
   async function passwordHash(password, salt) {
     const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
     const bits = await crypto.subtle.deriveBits(
@@ -379,46 +376,65 @@
     return bytesToBase64Url(new Uint8Array(bits));
   }
 
-  function loadAdminCredential() {
+  function loadAdminSession() {
     try {
-      const credential = JSON.parse(localStorage.getItem(LOCAL_ADMIN_KEY) || 'null');
-      if (!credential || typeof credential.salt !== 'string' || typeof credential.hash !== 'string') return null;
-      return credential;
+      const session = JSON.parse(sessionStorage.getItem(LOCAL_ADMIN_SESSION_KEY) || 'null');
+      if (!session || typeof session.token !== 'string' || !/^[A-Za-z0-9_-]{40,100}$/.test(session.token)) return null;
+      if (Number(session.expiresAt) <= Date.now()) return null;
+      return session;
     } catch {
       return null;
     }
   }
 
   function isLocalAdminAuthenticated() {
-    const credential = loadAdminCredential();
-    if (!credential) return false;
-    try {
-      const session = JSON.parse(sessionStorage.getItem(LOCAL_ADMIN_SESSION_KEY) || 'null');
-      return session?.fingerprint === credential.hash && Number(session.expiresAt) > Date.now();
-    } catch {
-      return false;
-    }
+    return Boolean(loadAdminSession());
   }
 
-  function lockAccountManagement() {
+  async function adminRequest(path, options = {}) {
+    const session = loadAdminSession();
+    const headers = { ...(options.headers || {}) };
+    if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+    if (session) headers.Authorization = `Bearer ${session.token}`;
+    const response = await fetch(`${ADMIN_API}${path}`, { ...options, headers, cache: 'no-store' });
+    let payload = null;
+    if (response.status !== 204) {
+      try { payload = await response.json(); } catch { payload = null; }
+    }
+    if (!response.ok) {
+      const error = new Error(payload?.error?.message || `管理员认证服务返回 ${response.status}`);
+      error.status = response.status;
+      error.code = payload?.error?.code || '';
+      throw error;
+    }
+    return payload;
+  }
+
+  function lockAccountManagement({ preserveSession = false } = {}) {
     clearTimeout(adminSessionTimer);
     adminSessionTimer = 0;
-    sessionStorage.removeItem(LOCAL_ADMIN_SESSION_KEY);
+    if (!preserveSession) sessionStorage.removeItem(LOCAL_ADMIN_SESSION_KEY);
     elements.accountPanel.hidden = true;
     elements.accountList.replaceChildren();
     elements.localAdminSession.hidden = true;
-    elements.localAdminForm.hidden = false;
+    elements.localAdminForm.hidden = !adminStatusLoaded;
     elements.adminAuthStatus.textContent = '未登录';
     elements.adminAuthStatus.classList.remove('connected');
-    const hasCredential = Boolean(loadAdminCredential());
-    elements.localAdminTitle.textContent = hasCredential ? '管理员登录' : '设置管理员密码';
-    elements.localAdminHelp.textContent = hasCredential
-      ? '输入本机管理员密码后，才能查看和管理当前浏览器中的账号。'
-      : '首次使用请设置本机管理员密码。密码只保存在当前浏览器中，并经过加密摘要处理。';
-    elements.localAdminConfirmField.hidden = hasCredential;
-    elements.localAdminConfirm.required = !hasCredential;
-    elements.localAdminPassword.autocomplete = hasCredential ? 'current-password' : 'new-password';
-    elements.localAdminSubmit.textContent = hasCredential ? '登录后台' : '设置密码并进入';
+    if (!adminStatusLoaded) {
+      elements.localAdminTitle.textContent = '正在检查管理员状态';
+      elements.localAdminHelp.textContent = '正在连接管理员认证服务…';
+      return;
+    }
+    elements.localAdminTitle.textContent = adminInitialized ? '管理员登录' : '首次设置管理员密码';
+    elements.localAdminHelp.textContent = adminInitialized
+      ? '管理员密码已经锁定，输入正确密码后才能进入。其他访客不能重新设置。'
+      : '全站只允许设置一次。请同时输入站长专用设置码和新管理员密码。';
+    elements.localAdminSetupKeyField.hidden = adminInitialized;
+    elements.localAdminSetupKey.required = !adminInitialized;
+    elements.localAdminConfirmField.hidden = adminInitialized;
+    elements.localAdminConfirm.required = !adminInitialized;
+    elements.localAdminPassword.autocomplete = adminInitialized ? 'current-password' : 'new-password';
+    elements.localAdminSubmit.textContent = adminInitialized ? '登录后台' : '设置一次并锁定';
   }
 
   function unlockAccountManagement() {
@@ -442,9 +458,33 @@
     renderAccounts();
   }
 
-  function restoreAdminSession() {
-    if (isLocalAdminAuthenticated()) unlockAccountManagement();
-    else lockAccountManagement();
+  async function restoreAdminSession() {
+    adminStatusLoaded = false;
+    lockAccountManagement({ preserveSession: true });
+    try {
+      const status = await adminRequest('/status');
+      adminInitialized = Boolean(status?.initialized);
+      adminStatusLoaded = true;
+      if (!adminInitialized) sessionStorage.removeItem(LOCAL_ADMIN_SESSION_KEY);
+      const session = loadAdminSession();
+      if (!session) {
+        lockAccountManagement();
+        return;
+      }
+      try {
+        const verified = await adminRequest('/session');
+        session.expiresAt = new Date(verified.session.expiresAt).getTime();
+        sessionStorage.setItem(LOCAL_ADMIN_SESSION_KEY, JSON.stringify(session));
+        unlockAccountManagement();
+      } catch {
+        sessionStorage.removeItem(LOCAL_ADMIN_SESSION_KEY);
+        lockAccountManagement();
+      }
+    } catch {
+      adminStatusLoaded = false;
+      lockAccountManagement();
+      showMessage('error', '管理员认证服务暂时无法连接，请稍后刷新页面。');
+    }
   }
 
   async function submitLocalAdminAuth(event) {
@@ -456,37 +496,59 @@
       elements.localAdminPassword.reportValidity();
       return;
     }
-    let credential = loadAdminCredential();
-    if (!credential) {
+    if (!adminStatusLoaded) {
+      showMessage('error', '管理员认证状态尚未加载，请刷新页面后重试。');
+      return;
+    }
+    if (!adminInitialized) {
       if (password !== elements.localAdminConfirm.value) {
         elements.localAdminConfirm.setCustomValidity('两次输入的密码不一致。');
         elements.localAdminConfirm.reportValidity();
         return;
       }
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      credential = {
-        version: 1,
-        salt: bytesToBase64Url(salt),
-        hash: await passwordHash(password, salt),
-        createdAt: new Date().toISOString(),
-      };
-      localStorage.setItem(LOCAL_ADMIN_KEY, JSON.stringify(credential));
-    } else {
-      const candidate = await passwordHash(password, fromBase64Url(credential.salt));
-      if (candidate !== credential.hash) {
-        elements.localAdminPassword.setCustomValidity('管理员密码不正确。');
-        elements.localAdminPassword.reportValidity();
+      const setupKey = elements.localAdminSetupKey.value.trim();
+      if (setupKey.length < 12) {
+        elements.localAdminSetupKey.setCustomValidity('请输入有效的站长专用设置码。');
+        elements.localAdminSetupKey.reportValidity();
         return;
       }
     }
-    sessionStorage.setItem(LOCAL_ADMIN_SESSION_KEY, JSON.stringify({
-      fingerprint: credential.hash,
-      expiresAt: Date.now() + LOCAL_ADMIN_SESSION_MS,
-    }));
-    elements.localAdminPassword.value = '';
-    elements.localAdminConfirm.value = '';
-    unlockAccountManagement();
-    showMessage('success', '管理员登录成功，现在可以管理本机账号。');
+    elements.localAdminSubmit.disabled = true;
+    elements.localAdminSubmit.textContent = adminInitialized ? '正在登录…' : '正在设置…';
+    try {
+      const payload = await adminRequest(adminInitialized ? '/login' : '/setup', {
+        method: 'POST',
+        body: JSON.stringify(adminInitialized
+          ? { password }
+          : { password, setupKey: elements.localAdminSetupKey.value.trim() }),
+      });
+      const expiresAt = new Date(payload.session.expiresAt).getTime();
+      sessionStorage.setItem(LOCAL_ADMIN_SESSION_KEY, JSON.stringify({ token: payload.session.token, expiresAt }));
+      localStorage.removeItem('timetable_admin_auth_v1');
+      adminInitialized = true;
+      elements.localAdminPassword.value = '';
+      elements.localAdminConfirm.value = '';
+      elements.localAdminSetupKey.value = '';
+      unlockAccountManagement();
+      showMessage('success', '管理员认证成功。管理员密码已全站锁定，其他人不能重新设置。');
+    } catch (error) {
+      if (error.code === 'admin_setup_key_invalid') {
+        elements.localAdminSetupKey.setCustomValidity('站长专用设置码不正确。');
+        elements.localAdminSetupKey.reportValidity();
+      } else if (error.code === 'admin_credentials_invalid') {
+        elements.localAdminPassword.setCustomValidity('管理员密码不正确。');
+        elements.localAdminPassword.reportValidity();
+      } else if (error.code === 'admin_already_initialized') {
+        adminInitialized = true;
+        lockAccountManagement();
+        showMessage('error', '管理员密码已经设置，请直接登录。');
+      } else {
+        showMessage('error', error instanceof Error ? error.message : '管理员认证失败，请稍后重试。');
+      }
+    } finally {
+      elements.localAdminSubmit.disabled = false;
+      elements.localAdminSubmit.textContent = adminInitialized ? '登录后台' : '设置一次并锁定';
+    }
   }
 
   async function saveAccount(event) {
@@ -921,12 +983,14 @@
   elements.lessonName.addEventListener('input', () => elements.lessonName.setCustomValidity(''));
   elements.accountFullName.addEventListener('input', () => elements.accountFullName.setCustomValidity(''));
   elements.accountPassword.addEventListener('input', () => elements.accountPassword.setCustomValidity(''));
+  elements.localAdminSetupKey.addEventListener('input', () => elements.localAdminSetupKey.setCustomValidity(''));
   elements.localAdminPassword.addEventListener('input', () => elements.localAdminPassword.setCustomValidity(''));
   elements.localAdminConfirm.addEventListener('input', () => elements.localAdminConfirm.setCustomValidity(''));
   elements.localAdminForm.addEventListener('submit', (event) => {
     submitLocalAdminAuth(event).catch(() => showMessage('error', '管理员登录失败，请稍后重试。'));
   });
-  elements.localAdminLogout.addEventListener('click', () => {
+  elements.localAdminLogout.addEventListener('click', async () => {
+    try { await adminRequest('/logout', { method: 'POST' }); } catch { /* Local sign-out still completes. */ }
     lockAccountManagement();
     clearMessages();
   });

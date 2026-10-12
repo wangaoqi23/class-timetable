@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { faceShareCodeInput, faceShareInput, isAllowedOrigin } from '../src/index.js';
+import {
+  adminPasswordInput,
+  adminSetupInput,
+  faceShareCodeInput,
+  faceShareInput,
+  isAllowedOrigin,
+} from '../src/index.js';
 import {
   constantTimeEqual,
   createPasswordRecord,
@@ -131,4 +137,14 @@ test('face-to-face shares require a six digit code and bounded encoded payload',
   assert.throws(() => faceShareInput({ code: '12345', token: input.token }), /6 digits/);
   assert.throws(() => faceShareInput({ code: '123456', token: 'bad token' }), /payload/);
   assert.throws(() => faceShareCodeInput({ code: 'abcdef' }), /6 digits/);
+});
+
+test('administrator setup requires a strong one-time setup key and password', () => {
+  assert.equal(adminPasswordInput({ password: '管理员密码123' }), '管理员密码123');
+  assert.deepEqual(adminSetupInput({ password: '管理员密码123', setupKey: 'OWNER-ABCD1234' }), {
+    password: '管理员密码123',
+    setupKey: 'OWNER-ABCD1234',
+  });
+  assert.throws(() => adminPasswordInput({ password: 'short' }), /8 to 128/);
+  assert.throws(() => adminSetupInput({ password: '管理员密码123', setupKey: 'short' }), /setup key/);
 });

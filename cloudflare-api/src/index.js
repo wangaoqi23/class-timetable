@@ -48,6 +48,10 @@ const FACE_SHARE_CREATE_LIMIT = 30;
 const FACE_SHARE_RESOLVE_LIMIT = 60;
 const FACE_SHARE_TOKEN_PATTERN = /^(?:[zj]\.)?[A-Za-z0-9_-]{20,100000}$/;
 const FACE_SHARE_CODE_PATTERN = /^\d{6}$/;
+const ADMIN_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const ADMIN_SETUP_LIMIT = 5;
+const ADMIN_LOGIN_LIMIT = 8;
+const ADMIN_TOKEN_PATTERN = /^[A-Za-z0-9_-]{40,100}$/;
 
 function timestamp(value) {
   return new Date(Number(value)).toISOString();
@@ -908,6 +912,129 @@ async function resolveFaceShare(request, env) {
   return json({ share: { code, token: row.token, expiresAt: timestamp(row.expires_at) } }, 200, privateHeaders);
 }
 
+function adminPasswordInput(value) {
+  const password = value && typeof value.password === 'string' ? value.password : '';
+  if (password.length < 8 || password.length > 128) {
+    throw new ApiError(422, 'invalid_admin_password', 'Administrator password must contain 8 to 128 characters.');
+  }
+  return password;
+}
+
+function adminSetupInput(value) {
+  const password = adminPasswordInput(value);
+  const setupKey = value && typeof value.setupKey === 'string' ? value.setupKey.trim() : '';
+  if (setupKey.length < 12 || setupKey.length > 128) {
+    throw new ApiError(422, 'invalid_admin_setup_key', 'Administrator setup key is invalid.');
+  }
+  return { password, setupKey };
+}
+
+function configuredAdminSetupKey(env) {
+  const setupKey = typeof env.ADMIN_SETUP_KEY === 'string' ? env.ADMIN_SETUP_KEY.trim() : '';
+  if (setupKey.length < 12 || setupKey.length > 128) {
+    throw new ApiError(503, 'admin_setup_unavailable', 'Administrator setup is not configured.');
+  }
+  return setupKey;
+}
+
+async function createAdminSession(env, now = Date.now()) {
+  const token = randomToken(32);
+  const tokenHash = await sha256Base64Url(token);
+  const expiresAt = now + ADMIN_SESSION_TTL_MS;
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at <= ?1').bind(now),
+    env.DB
+      .prepare('INSERT INTO admin_sessions (token_hash, created_at, expires_at) VALUES (?1, ?2, ?3)')
+      .bind(tokenHash, now, expiresAt),
+  ]);
+  return { token, tokenHash, expiresAt };
+}
+
+async function authenticateAdmin(request, env) {
+  const authorization = request.headers.get('Authorization') || '';
+  const bearerMatch = authorization.match(/^Bearer ([A-Za-z0-9_-]{40,100})$/);
+  const token = bearerMatch ? bearerMatch[1] : '';
+  if (!ADMIN_TOKEN_PATTERN.test(token)) {
+    throw new ApiError(401, 'admin_authentication_required', 'Administrator sign-in is required.');
+  }
+  const tokenHash = await sha256Base64Url(token);
+  const now = Date.now();
+  const row = await env.DB
+    .prepare('SELECT expires_at FROM admin_sessions WHERE token_hash = ?1 AND expires_at > ?2')
+    .bind(tokenHash, now)
+    .first();
+  if (!row) throw new ApiError(401, 'admin_session_invalid', 'Administrator session is invalid or has expired.');
+  return { tokenHash, expiresAt: Number(row.expires_at) };
+}
+
+async function adminStatus(env) {
+  const row = await env.DB.prepare('SELECT created_at FROM admin_credentials WHERE id = 1').first();
+  return json({ initialized: Boolean(row), createdAt: row ? timestamp(row.created_at) : null }, 200, privateHeaders);
+}
+
+async function setupAdmin(request, env) {
+  const rateKey = await consumeAuthRateLimit(request, env, 'admin-setup', '', ADMIN_SETUP_LIMIT);
+  const existing = await env.DB.prepare('SELECT id FROM admin_credentials WHERE id = 1').first();
+  if (existing) throw new ApiError(409, 'admin_already_initialized', 'Administrator password has already been initialized.');
+  const { password, setupKey } = adminSetupInput(await readJson(request));
+  if (!constantTimeEqual(setupKey, configuredAdminSetupKey(env))) {
+    throw new ApiError(403, 'admin_setup_key_invalid', 'Administrator setup key is incorrect.');
+  }
+  const now = Date.now();
+  const iterations = parsePasswordIterations(env.PASSWORD_ITERATIONS);
+  const record = await createPasswordRecord(password, iterations);
+  const result = await env.DB
+    .prepare(
+      `INSERT OR IGNORE INTO admin_credentials
+       (id, password_hash, password_salt, password_iterations, created_at, updated_at)
+       VALUES (1, ?1, ?2, ?3, ?4, ?4)`,
+    )
+    .bind(record.hash, record.salt, record.iterations, now)
+    .run();
+  if (!result.meta || Number(result.meta.changes) === 0) {
+    throw new ApiError(409, 'admin_already_initialized', 'Administrator password has already been initialized.');
+  }
+  await clearAuthRateLimit(env, rateKey);
+  const session = await createAdminSession(env, now);
+  return json(
+    { initialized: true, session: { token: session.token, expiresAt: timestamp(session.expiresAt) } },
+    201,
+    privateHeaders,
+  );
+}
+
+async function loginAdmin(request, env) {
+  const password = adminPasswordInput(await readJson(request));
+  const rateKey = await consumeAuthRateLimit(request, env, 'admin-login', '', ADMIN_LOGIN_LIMIT);
+  const row = await env.DB
+    .prepare(
+      `SELECT password_hash, password_salt, password_iterations
+       FROM admin_credentials WHERE id = 1`,
+    )
+    .first();
+  if (!row) throw new ApiError(409, 'admin_setup_required', 'Administrator password has not been initialized.');
+  const valid = await verifyPassword(password, {
+    hash: row.password_hash,
+    salt: row.password_salt,
+    iterations: Number(row.password_iterations),
+  });
+  if (!valid) throw new ApiError(401, 'admin_credentials_invalid', 'Administrator password is incorrect.');
+  await clearAuthRateLimit(env, rateKey);
+  const session = await createAdminSession(env);
+  return json({ session: { token: session.token, expiresAt: timestamp(session.expiresAt) } }, 200, privateHeaders);
+}
+
+async function currentAdmin(request, env) {
+  const auth = await authenticateAdmin(request, env);
+  return json({ authenticated: true, session: { expiresAt: timestamp(auth.expiresAt) } }, 200, privateHeaders);
+}
+
+async function logoutAdmin(request, env) {
+  const auth = await authenticateAdmin(request, env);
+  await env.DB.prepare('DELETE FROM admin_sessions WHERE token_hash = ?1').bind(auth.tokenHash).run();
+  return empty(204, privateHeaders);
+}
+
 async function routeApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.length > 1 ? url.pathname.replace(/\/$/, '') : url.pathname;
@@ -916,6 +1043,11 @@ async function routeApi(request, env) {
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) requireWriteOrigin(request, env);
 
   if (method === 'GET' && path === '/api/health') return json({ ok: true });
+  if (method === 'GET' && path === '/api/admin/status') return adminStatus(env);
+  if (method === 'POST' && path === '/api/admin/setup') return setupAdmin(request, env);
+  if (method === 'POST' && path === '/api/admin/login') return loginAdmin(request, env);
+  if (method === 'GET' && path === '/api/admin/session') return currentAdmin(request, env);
+  if (method === 'POST' && path === '/api/admin/logout') return logoutAdmin(request, env);
   if (method === 'POST' && path === '/api/face-shares') return createFaceShare(request, env);
   if (method === 'POST' && path === '/api/face-shares/preview') return resolveFaceShare(request, env);
   if (method === 'POST' && path === '/api/auth/register') return register(request, env);
@@ -1010,4 +1142,4 @@ async function fetchHandler(request, env) {
 }
 
 export default { fetch: fetchHandler };
-export { ApiError, faceShareCodeInput, faceShareInput, fetchHandler, readJson };
+export { ApiError, adminPasswordInput, adminSetupInput, faceShareCodeInput, faceShareInput, fetchHandler, readJson };

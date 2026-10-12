@@ -2,7 +2,7 @@
 
 这是一个零运行时依赖的 Cloudflare Worker。它使用 D1 保存用户、会话、个人课表和不可变分享快照，并可通过 Workers Static Assets 与 `github-pages/` 前端同源部署。
 
-当前生产账户入口：<https://class-timetable.wangaoqi23.workers.dev/login/>
+当前生产网站：<https://class-timetable.wangaoqi23.workers.dev/>；首次访问会进入注册页。
 
 ## 安全模型
 
@@ -14,6 +14,7 @@
 - 登录和注册在执行 PBKDF2 前经过 D1 原子限流。默认每 15 分钟允许同一地址注册 5 次、登录 20 次，并允许同一地址和用户名组合尝试登录 8 次；超限封锁 15 分钟并返回 `429` 与 `Retry-After`。
 - JSON 请求最大 384 KiB。课表字段、日期、时间、周次、颜色和关联关系都经过服务端校验；同一班级在实际生效周的重叠课程会返回 `lesson_conflict`。
 - 生产允许的跨域来源默认为 `https://wangaoqi23.github.io`，并始终允许当前 Worker 同源。不允许来源后缀或通配符；只有显式设置 `ALLOW_LOCALHOST_ORIGIN="true"` 时才允许 `http(s)://localhost[:port]`。
+- `/data/schedule.json` 通过固定的 `PUBLIC_SCHEDULE_URL` 读取 GitHub 仓库中的最新公共课表；上游暂时不可用时回退到最近一次部署内置的数据。
 
 ## 本地准备
 

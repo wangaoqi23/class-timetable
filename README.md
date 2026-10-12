@@ -4,12 +4,13 @@
 
 ## 在线地址
 
-- 公开课表：<https://wangaoqi23.github.io/class-timetable/>
+- 网站入口：<https://wangaoqi23.github.io/class-timetable/>
 - 登录 / 注册：<https://class-timetable.wangaoqi23.workers.dev/login/>
 - 个人课表：<https://class-timetable.wangaoqi23.workers.dev/app/>
+- 登录后公共课表：<https://class-timetable.wangaoqi23.workers.dev/>
 - GitHub 课表管理后台：<https://wangaoqi23.github.io/class-timetable/admin/>
 
-GitHub Pages 展示由管理后台维护的公共课表；它的账户入口会进入 Cloudflare Worker 上的账户系统。这样公共课表随 GitHub 提交自动更新，登录 Cookie、个人数据和 API 也保持同源。
+网站入口会先要求注册；已有会话会自动进入个人课表。登录后的公共课表从 GitHub 仓库读取最新数据，登录 Cookie、个人数据和 API 保持在同一个 Cloudflare Worker 域名下。
 
 ## 功能
 
@@ -18,7 +19,7 @@ GitHub Pages 展示由管理后台维护的公共课表；它的账户入口会�
 - 生成课表分享链接；接收者可先预览，再一键复制到自己的账户中独立编辑。
 - 按班级和教学周查看课程，桌面显示周表，手机显示按天日程卡片。
 - 默认 10 节作息：08:30–09:15、09:15–10:00、10:20–11:05、11:05–11:50、13:00–13:45、13:45–14:30、14:50–15:35、15:35–16:20、18:00–18:45、18:45–19:30。
-- GitHub 管理后台直接维护 `github-pages/data/schedule.json`，供无需登录的访客查看公共课表。
+- GitHub 管理后台直接维护 `github-pages/data/schedule.json`，登录用户查看公共课表时会读取最新版本。
 
 ## 结构
 

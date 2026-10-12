@@ -888,9 +888,37 @@ async function routeApi(request, env) {
   throw new ApiError(404, 'not_found', 'API endpoint not found.');
 }
 
+async function servePublicSchedule(request, env) {
+  const sourceUrl = env.PUBLIC_SCHEDULE_URL;
+  if (sourceUrl) {
+    try {
+      const upstream = await fetch(sourceUrl, {
+        headers: { Accept: 'application/json' },
+        cf: { cacheTtl: 0 },
+      });
+      if (upstream.ok) {
+        return new Response(upstream.body, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Cache-Control': 'no-store, max-age=0',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        });
+      }
+    } catch {
+      // Fall back to the last schedule bundled with the deployment.
+    }
+  }
+  return env.ASSETS.fetch(request);
+}
+
 async function fetchHandler(request, env) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/')) {
+    if (request.method === 'GET' && url.pathname === '/data/schedule.json' && env.ASSETS) {
+      return servePublicSchedule(request, env);
+    }
     if (env.ASSETS && typeof env.ASSETS.fetch === 'function') return env.ASSETS.fetch(request);
     return json({ error: { code: 'not_found', message: 'Not found.' } }, 404);
   }

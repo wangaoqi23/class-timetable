@@ -24,6 +24,12 @@
     return target.href;
   }
 
+  function registrationUrl() {
+    const target = new URL(primaryAppUrl('login/'));
+    target.searchParams.set('mode', 'register');
+    return target.href;
+  }
+
   function redirectAccountPageToPrimary() {
     if (!isGitHubPagesMirror()) return false;
     const relativePath = (window.location.pathname || '').slice(GITHUB_PROJECT_PATH.length);
@@ -67,6 +73,7 @@
 
   function loginUrl() {
     const login = new URL(rootUrl('login/'));
+    login.searchParams.set('mode', 'login');
     const next = safeNext(window.location.href, 'app/');
     login.hash = `next=${encodeURIComponent(next)}`;
     return login.href;
@@ -139,6 +146,7 @@
     loginUrl,
     isGitHubPagesMirror,
     primaryAppUrl,
+    registrationUrl,
     redirectAccountPageToPrimary,
     request,
   };

@@ -6,7 +6,7 @@
 
   const accountLink = document.querySelector('#account-link');
   if (Api.isGitHubPagesMirror()) {
-    if (accountLink) accountLink.href = Api.primaryAppUrl('login/');
+    window.location.replace(Api.registrationUrl());
     return;
   }
 
@@ -17,8 +17,7 @@
       accountLink.textContent = '我的课表';
     })
     .catch((error) => {
-      if (error?.status !== 401) {
-        if (accountLink) accountLink.title = '账户服务暂时不可用';
-      }
+      if (error?.status === 401) window.location.replace(Api.registrationUrl());
+      else if (accountLink) accountLink.title = '账户服务暂时不可用';
     });
 })();

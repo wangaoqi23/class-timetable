@@ -5,6 +5,7 @@ compatibility_date = "2026-05-22"
 [vars]
 APP_ORIGIN = "https://wangaoqi23.github.io"
 PASSWORD_ITERATIONS = "210000"
+PUBLIC_SCHEDULE_URL = "https://raw.githubusercontent.com/wangaoqi23/class-timetable/main/github-pages/data/schedule.json"
 # Set ALLOW_LOCALHOST_ORIGIN = "true" only in a local development override.
 
 [[d1_databases]]
@@ -18,5 +19,5 @@ migrations_dir = "migrations"
 [assets]
 directory = "../github-pages"
 binding = "ASSETS"
-run_worker_first = ["/api/*"]
+run_worker_first = ["/api/*", "/data/schedule.json"]
 not_found_handling = "single-page-application"

@@ -15,8 +15,22 @@
     submit: document.querySelector('#auth-submit'),
     error: document.querySelector('#auth-error'),
   };
-  let mode = new URLSearchParams(window.location.search).get('mode') === 'register' ? 'register' : 'login';
+  let mode = new URLSearchParams(window.location.search).get('mode') === 'login' ? 'login' : 'register';
   let submitting = false;
+
+  function authErrorMessage(error) {
+    const detail = error?.payload?.error;
+    if (detail?.code === 'username_taken') return '这个用户名已经注册，请直接登录或换一个用户名。';
+    if (detail?.code === 'invalid_credentials') return '用户名或密码不正确。';
+    if (detail?.code === 'rate_limited') return '尝试次数过多，请稍后再试。';
+    if (detail?.code === 'invalid_input' && detail?.field === 'username') {
+      return '用户名需为 3–32 位，可使用中英文字母、数字、点、下划线和连字符。';
+    }
+    if (detail?.code === 'invalid_input' && detail?.field === 'password') {
+      return '密码需为 8–128 位。';
+    }
+    return error instanceof Error ? error.message : '操作失败，请稍后重试。';
+  }
 
   function showError(message) {
     elements.error.textContent = message;
@@ -61,7 +75,7 @@
       await Api.request(`/api/auth/${mode}`, { method: 'POST', auth: false, body: JSON.stringify(body) });
       continueToNextPage();
     } catch (error) {
-      showError(error instanceof Error ? error.message : '操作失败，请稍后重试。');
+      showError(authErrorMessage(error));
     } finally {
       submitting = false;
       updateSubmit();

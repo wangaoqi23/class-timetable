@@ -80,7 +80,7 @@ assert.equal(capturedRequest.options.headers.has('Authorization'), false);
 apiContext.window.location.href = 'https://example.test/class-timetable/import/#private-share-token';
 const loginTarget = new URL(apiContext.window.TimetableApi.loginUrl());
 assert.equal(loginTarget.pathname, '/class-timetable/login/');
-assert.equal(loginTarget.search, '', 'the return URL must stay out of the login query string');
+assert.equal(loginTarget.search, '?mode=login', 'only the non-sensitive screen mode may use the login query string');
 assert.equal(
   new URLSearchParams(loginTarget.hash.slice(1)).get('next'),
   'https://example.test/class-timetable/import/#private-share-token',
@@ -92,9 +92,8 @@ assert.equal(
   'login return paths must remain on the current origin',
 );
 
-function loadApiAt(pathname, search = '', hash = '') {
+function loadApiAt(pathname, search = '', hash = '', origin = 'https://wangaoqi23.github.io') {
   let replaced = '';
-  const origin = 'https://wangaoqi23.github.io';
   const pageContext = {
     window: {
       location: {
@@ -139,19 +138,23 @@ assert.equal(new URL(nestedPath.replaced()).origin, 'https://class-timetable.wan
 assert.equal(new URL(nestedPath.api.primaryAppUrl('//evil')).origin, 'https://class-timetable.wangaoqi23.workers.dev');
 
 const mirrorRoot = loadApiAt('/class-timetable/');
-const mirrorAccountLink = {};
 let mirrorRequestCount = 0;
-mirrorRoot.context.document.querySelector = (selector) => selector === '#account-link' ? mirrorAccountLink : null;
+mirrorRoot.context.document.querySelector = () => null;
 mirrorRoot.context.window.TimetableApi.request = async () => { mirrorRequestCount += 1; };
 vm.runInContext(sessionRedirectSource, mirrorRoot.context, { filename: 'session-redirect.js' });
-assert.equal(mirrorRoot.replaced(), '', 'the public GitHub timetable should remain visible');
+assert.equal(mirrorRoot.replaced(), 'https://class-timetable.wangaoqi23.workers.dev/login/?mode=register', 'first-time visitors should start on registration');
 assert.equal(mirrorRequestCount, 0, 'the GitHub mirror must not call an API that only exists on the Worker');
-assert.equal(mirrorAccountLink.href, 'https://class-timetable.wangaoqi23.workers.dev/login/');
 
-const workerPage = loadApiAt('/class-timetable/app/');
-workerPage.context.window.location.origin = 'https://class-timetable.wangaoqi23.workers.dev';
+const workerPage = loadApiAt('/', '', '', 'https://class-timetable.wangaoqi23.workers.dev');
 assert.equal(workerPage.api.isGitHubPagesMirror(), false);
 assert.equal(workerPage.api.redirectAccountPageToPrimary(), false, 'the primary app must keep using its same-origin API');
+assert.equal(workerPage.api.registrationUrl(), 'https://class-timetable.wangaoqi23.workers.dev/login/?mode=register');
+const workerAccountLink = {};
+workerPage.context.document.querySelector = (selector) => selector === '#account-link' ? workerAccountLink : null;
+workerPage.context.window.TimetableApi.request = async () => { const error = new Error('signed out'); error.status = 401; throw error; };
+vm.runInContext(sessionRedirectSource, workerPage.context, { filename: 'session-redirect.js' });
+await new Promise((resolve) => setTimeout(resolve, 0));
+assert.equal(workerPage.replaced(), 'https://class-timetable.wangaoqi23.workers.dev/login/?mode=register', 'signed-out Worker visitors should be sent to registration');
 
 apiContext.fetch = async () => ({
   status: 409,
@@ -179,7 +182,7 @@ assert.equal(utils.weekDates(schedule, 1).length, 7, 'a week should expose seven
 assert.match(indexHtml, /assets\/shared\.js/);
 assert.match(indexHtml, /assets\/app\.js/);
 assert.match(indexHtml, /id="account-link"/);
-assert.match(indexHtml, /href="https:\/\/class-timetable\.wangaoqi23\.workers\.dev\/login\/"/);
+assert.match(indexHtml, /href="https:\/\/class-timetable\.wangaoqi23\.workers\.dev\/login\/\?mode=register"/);
 assert.match(indexHtml, /assets\/api-client\.js/);
 assert.match(indexHtml, /assets\/session-redirect\.js/);
 assert.match(indexHtml, /Content-Security-Policy/);
@@ -197,12 +200,14 @@ assert.match(apiClientSource, /\/api\//);
 assert.doesNotMatch(apiClientSource, /localStorage|sessionStorage|Authorization|Bearer|API_BASE_URL/);
 assert.match(authSource, /\/api\/auth\/me/);
 assert.match(authSource, /redirectAccountPageToPrimary\(\)/);
+assert.match(authSource, /get\('mode'\) === 'login' \? 'login' : 'register'/);
+assert.match(authSource, /密码需为 8–128 位/);
 assert.match(authSource, /window\.location\.hash\.slice\(1\)/);
 assert.doesNotMatch(authSource, /query\.get\('next'\)/);
 assert.doesNotMatch(authSource, /accessToken|setSession|getToken/);
 assert.match(sessionRedirectSource, /\/api\/auth\/me/);
 assert.match(sessionRedirectSource, /accountLink\.textContent\s*=\s*'我的课表'/);
-assert.doesNotMatch(sessionRedirectSource, /location\.replace/, 'signed-in users should still be able to view the public timetable');
+assert.match(sessionRedirectSource, /registrationUrl\(\)/);
 assert.match(workspaceSource, /\/api\/auth\/me/);
 assert.match(workspaceSource, /redirectAccountPageToPrimary\(\)/);
 assert.match(workspaceSource, /updateScheduleUrl\(record\.id\)/);
@@ -213,11 +218,12 @@ assert.doesNotMatch(workspaceSource, /link\.hash\s*=\s*encodeURIComponent\(share
 assert.doesNotMatch(workspaceSource, /getToken|clearSession|Authorization|Bearer/);
 assert.match(loginHtml, /assets\/api-client\.js/);
 assert.doesNotMatch(loginHtml, /id="auth-username"[^>]*\spattern=/, 'browser username rules should defer to the Unicode-aware API validator');
-assert.match(loginHtml, /href="https:\/\/wangaoqi23\.github\.io\/class-timetable\/"/);
+assert.match(loginHtml, /id="register-tab" class="auth-tab active"/);
+assert.match(loginHtml, /href="https:\/\/wangaoqi23\.github\.io\/class-timetable\/admin\/"/);
 assert.match(workspaceHtml, /assets\/workspace\.js/);
-assert.match(workspaceHtml, /href="https:\/\/wangaoqi23\.github\.io\/class-timetable\/"/);
+assert.match(workspaceHtml, /class="sidebar-public-link" href="\.\.\/"/);
 assert.match(importHtml, /assets\/import\.js/);
-assert.match(importHtml, /href="https:\/\/wangaoqi23\.github\.io\/class-timetable\/"/);
+assert.match(importHtml, /class="nav-link" href="\.\.\/">公共课表/);
 assert.match(importHtml, /meta name="app-root" content="\.\.\/"/);
 assert.match(importSource, /\/api\/shares\/preview/);
 assert.match(importSource, /\/api\/shares\/import/);

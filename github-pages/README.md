@@ -1,6 +1,6 @@
 # GitHub Pages 课程表
 
-这个目录包含 GitHub Pages 公开站和 Cloudflare Worker 同源提供的账户前端资源。公开课表可以直接在 GitHub Pages 查看；注册、登录、个人课表与分享导入在 <https://class-timetable.wangaoqi23.workers.dev/> 使用同源 `/api`。
+这个目录包含 GitHub Pages 网站入口和 Cloudflare Worker 同源提供的账户前端资源。访问入口会先进入注册页；注册、登录、公共课表、个人课表与分享导入在 <https://class-timetable.wangaoqi23.workers.dev/> 使用同源 `/api`。
 
 ## 发布
 
@@ -38,7 +38,7 @@
 - `import/#<分享编号>`：分享预览和一键导入页；未登录时会先跳转登录并保留原链接。
 - `assets/api-client.js`：同源 API 客户端。写请求从 `tt_csrf` Cookie 读取令牌并发送 `X-CSRF-Token`，不在浏览器存储访问令牌。
 
-账户接口与完整网站同源提供在 `/api` 下。GitHub Pages 上的账户入口和 `login/`、`app/`、`import/` 页面会转到 Worker，并保留分享链接的查询参数和 URL 片段。登录成功后服务端设置 `tt_session`（HttpOnly）和 `tt_csrf` Cookie，前端源码中不需要填写 API 密钥。
+账户接口与完整网站同源提供在 `/api` 下。GitHub Pages 入口和 `login/`、`app/`、`import/` 页面会转到 Worker，并保留分享链接的查询参数和 URL 片段。未登录访问公共课表时会先进入注册页；登录成功后服务端设置 `tt_session`（HttpOnly）和 `tt_csrf` Cookie。Worker 的公共课表接口从 GitHub 仓库读取最新 `schedule.json`，前端源码中不需要填写 API 密钥。
 
 ## 本地检查
 

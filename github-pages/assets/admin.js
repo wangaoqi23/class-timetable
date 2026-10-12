@@ -29,6 +29,7 @@
     disconnect: byId('disconnect'),
     error: byId('admin-error'),
     success: byId('admin-success'),
+    accountPanel: byId('account-admin-panel'),
     editor: byId('editor'),
     siteTitle: byId('site-title'),
     termName: byId('term-name'),
@@ -109,6 +110,10 @@
   function apiUrl(withReference = true) {
     const base = `https://api.github.com/repos/${encodeURIComponent(state.owner)}/${encodeURIComponent(state.repo)}/contents/${DATA_PATH}`;
     return withReference ? `${base}?ref=${encodeURIComponent(state.branch)}` : base;
+  }
+
+  function repositoryApiUrl() {
+    return `https://api.github.com/repos/${encodeURIComponent(state.owner)}/${encodeURIComponent(state.repo)}`;
   }
 
   async function githubRequest(url, options = {}) {
@@ -247,6 +252,7 @@
   }
 
   function renderAccounts() {
+    if (!state.schedule) return;
     const accountState = loadAccountState();
     elements.accountList.replaceChildren();
     elements.accountSummary.textContent = accountState.users.length
@@ -495,6 +501,8 @@
     fillSettings();
     renderClasses();
     renderLessons();
+    renderAccounts();
+    elements.accountPanel.hidden = false;
     elements.editor.hidden = false;
     elements.disconnect.hidden = false;
     elements.connectionStatus.textContent = `已连接 ${state.owner}/${state.repo}`;
@@ -592,8 +600,12 @@
 
   async function loadRepository() {
     clearMessages();
-    setBusy(true, '正在读取仓库…');
+    setBusy(true, '正在验证管理员…');
     try {
+      const repository = await githubRequest(repositoryApiUrl());
+      if (!repository.permissions || (!repository.permissions.push && !repository.permissions.admin)) {
+        throw new Error('管理员认证失败：当前 GitHub 账号没有此仓库的写入权限。');
+      }
       const file = await githubRequest(apiUrl());
       if (file.type !== 'file' || typeof file.content !== 'string' || typeof file.sha !== 'string') throw new Error('GitHub 返回的课表文件格式无效。');
       const schedule = JSON.parse(decodeBase64(file.content));
@@ -602,9 +614,10 @@
       state.schedule = U.clone(schedule);
       state.sha = file.sha;
       state.classId = schedule.classes[0].id;
+      await loadAccountClasses();
       persistConnectionFields();
       renderEditor();
-      showMessage('success', `已从 ${state.owner}/${state.repo}@${state.branch} 加载课表。`);
+      showMessage('success', `管理员身份已验证，已加载 ${state.owner}/${state.repo}@${state.branch}。`);
     } finally {
       setBusy(false, state.schedule ? `已连接 ${state.owner}/${state.repo}` : '连接失败');
     }
@@ -665,8 +678,10 @@
     state.sha = '';
     state.dirty = false;
     elements.editor.hidden = true;
+    elements.accountPanel.hidden = true;
+    elements.accountList.replaceChildren();
     elements.disconnect.hidden = true;
-    elements.connectionStatus.textContent = '尚未连接';
+    elements.connectionStatus.textContent = '未认证';
     elements.connectionStatus.classList.remove('connected');
     clearMessages();
   });
@@ -782,5 +797,5 @@
   });
 
   restoreConnectionFields();
-  loadAccountClasses().finally(renderAccounts);
+  loadAccountClasses();
 })();

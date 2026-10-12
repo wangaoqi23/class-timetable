@@ -31,6 +31,10 @@
         <form id="auth-form">
           <p class="eyebrow" id="auth-kicker">CREATE ACCOUNT</p>
           <h2 id="auth-title">创建个人账户</h2>
+          <div class="register-fields" id="register-fields">
+            <label>姓名<input id="auth-full-name" autocomplete="name" minlength="2" maxlength="30" required placeholder="请输入真实姓名" /></label>
+            <label>专业班级<select id="auth-class" required disabled><option value="">正在加载班级…</option></select></label>
+          </div>
           <label>用户名<input id="auth-username" autocomplete="username" minlength="3" maxlength="32" required placeholder="3–32 位字母、数字、点、下划线或连字符" /></label>
           <label>密码<input id="auth-password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required placeholder="8–128 位" /></label>
           <button class="button primary auth-submit" id="auth-submit" type="submit">注册并创建课表</button>

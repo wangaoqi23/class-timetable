@@ -5,6 +5,12 @@
   if (!Api) return;
 
   const accountLink = document.querySelector('#account-link');
+  if (Api.isGitHubPagesMirror()) {
+    const user = Api.localSessionUser();
+    window.location.replace(user ? Api.rootUrl('app/') : Api.registrationUrl());
+    return;
+  }
+
   Api.request('/api/auth/me', { auth: false })
     .then(() => {
       if (!accountLink) return;

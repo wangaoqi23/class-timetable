@@ -141,7 +141,32 @@
     if (password.length < 8 || password.length > 128) {
       throw localError(422, 'invalid_input', '密码长度无效。', 'password');
     }
-    return { username, usernameKey: username.toLocaleLowerCase('und'), password };
+    return { username, usernameKey: username.toLocaleLowerCase('und'), password, raw: body || {} };
+  }
+
+  function registrationProfile(raw) {
+    const fullName = typeof raw?.fullName === 'string' ? raw.fullName.trim().normalize('NFKC') : '';
+    const classId = typeof raw?.classId === 'string' ? raw.classId.trim() : '';
+    const baseSchedule = raw?.baseSchedule;
+    if (fullName.length < 2 || fullName.length > 30) {
+      throw localError(422, 'invalid_input', '姓名需为 2–30 位。', 'fullName');
+    }
+    if (!baseSchedule || !Array.isArray(baseSchedule.classes) || !Array.isArray(baseSchedule.lessons)) {
+      throw localError(422, 'invalid_input', '基础课表暂时不可用，请刷新页面。', 'classId');
+    }
+    const selectedClass = baseSchedule.classes.find((item) => item.id === classId);
+    if (!selectedClass) throw localError(422, 'invalid_input', '请选择专业班级。', 'classId');
+    return { fullName, classId, className: selectedClass.name, baseSchedule };
+  }
+
+  function personalizedBase(baseSchedule, classId, fullName) {
+    const selectedClass = baseSchedule.classes.find((item) => item.id === classId) || baseSchedule.classes[0];
+    const data = clone(baseSchedule);
+    data.title = `${fullName}的课表`;
+    data.classes = [clone(selectedClass)];
+    data.lessons = data.lessons.filter((lesson) => lesson.classId === selectedClass.id);
+    data.demo = false;
+    return data;
   }
 
   function requireLocalUser(state) {
@@ -156,7 +181,22 @@
   }
 
   function userPayload(user) {
-    return { id: user.id, username: user.username, createdAt: user.createdAt };
+    return {
+      id: user.id,
+      username: user.username,
+      fullName: user.fullName || user.username,
+      classId: user.classId || '',
+      className: user.className || '',
+      createdAt: user.createdAt,
+    };
+  }
+
+  function localSessionUser() {
+    if (!isGitHubPagesMirror()) return null;
+    const state = loadLocalState();
+    if (!state.session || Number(state.session.expiresAt) <= Date.now()) return null;
+    const user = state.users.find((item) => item.id === state.session.userId);
+    return user ? userPayload(user) : null;
   }
 
   function summary(record) {
@@ -223,6 +263,7 @@
 
     if (method === 'POST' && path === '/api/auth/register') {
       const body = credentialBody(settings);
+      const profile = registrationProfile(body.raw);
       if (state.users.some((item) => item.usernameKey === body.usernameKey)) {
         throw localError(409, 'username_taken', '这个用户名已经注册。');
       }
@@ -232,9 +273,11 @@
       const now = new Date().toISOString();
       const user = {
         id: crypto.randomUUID(), username: body.username, usernameKey: body.usernameKey,
+        fullName: profile.fullName, classId: profile.classId, className: profile.className,
         passwordSalt: salt, passwordHash: await passwordHash(body.password, salt), createdAt: now,
       };
       state.users.push(user);
+      createLocalSchedule(state, user, '我的课表', personalizedBase(profile.baseSchedule, profile.classId, profile.fullName));
       state.session = { userId: user.id, expiresAt: Date.now() + LOCAL_SESSION_MS };
       saveLocalState(state);
       return { user: userPayload(user), session: { expiresAt: new Date(state.session.expiresAt).toISOString() } };
@@ -367,6 +410,7 @@
     primaryAppUrl,
     registrationUrl,
     redirectAccountPageToPrimary,
+    localSessionUser,
     request,
   };
 })();

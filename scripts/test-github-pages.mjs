@@ -153,21 +153,29 @@ let mirrorRequestCount = 0;
 mirrorRoot.context.document.querySelector = () => null;
 mirrorRoot.context.window.TimetableApi.request = async () => { mirrorRequestCount += 1; const error = new Error('signed out'); error.status = 401; throw error; };
 vm.runInContext(sessionRedirectSource, mirrorRoot.context, { filename: 'session-redirect.js' });
-await new Promise((resolve) => setTimeout(resolve, 0));
 assert.equal(mirrorRoot.replaced(), 'https://wangaoqi23.github.io/class-timetable/login/?mode=register', 'first-time visitors should start on local registration');
-assert.equal(mirrorRequestCount, 1, 'the GitHub site should check its local account state');
+assert.equal(mirrorRequestCount, 0, 'the GitHub site should resolve local sessions without a network request');
 
 const localAccount = loadApiAt('/class-timetable/app/');
 const localApi = localAccount.api;
-const credentials = JSON.stringify({ username: '测试用户', password: 'Example-pass-123' });
-const registration = await localApi.request('/api/auth/register', { method: 'POST', auth: false, body: credentials });
+const credentials = { username: '测试用户', password: 'Example-pass-123' };
+const registrationBody = JSON.stringify({
+  ...credentials,
+  fullName: '王同学',
+  classId: schedule.classes[0].id,
+  baseSchedule: schedule,
+});
+const registration = await localApi.request('/api/auth/register', { method: 'POST', auth: false, body: registrationBody });
 assert.equal(registration.user.username, '测试用户');
+assert.equal(registration.user.fullName, '王同学');
+assert.equal(registration.user.className, schedule.classes[0].name);
 assert.equal((await localApi.request('/api/auth/me')).user.username, '测试用户');
+assert.equal((await localApi.request('/api/schedules')).schedules.length, 1, 'registration should create a personal copy of the public timetable');
 const created = await localApi.request('/api/schedules', {
   method: 'POST',
-  body: JSON.stringify({ name: '测试课表', data: schedule }),
+  body: JSON.stringify({ name: '第二份课表', data: schedule }),
 });
-assert.equal(created.schedule.name, '测试课表');
+assert.equal(created.schedule.name, '第二份课表');
 const shared = await localApi.request(`/api/schedules/${created.schedule.id}/shares`, { method: 'POST', body: '{}' });
 const sharedUrl = new URL(shared.share.shareUrl);
 assert.equal(sharedUrl.origin, 'https://wangaoqi23.github.io');
@@ -178,8 +186,8 @@ const preview = await localApi.request('/api/shares/preview', {
 assert.equal(preview.share.data.title, schedule.title);
 await localApi.request('/api/auth/logout', { method: 'POST' });
 await assert.rejects(localApi.request('/api/auth/me', { auth: false }), (error) => error.status === 401);
-await localApi.request('/api/auth/login', { method: 'POST', auth: false, body: credentials });
-assert.equal((await localApi.request('/api/schedules')).schedules.length, 1);
+await localApi.request('/api/auth/login', { method: 'POST', auth: false, body: JSON.stringify(credentials) });
+assert.equal((await localApi.request('/api/schedules')).schedules.length, 2);
 
 const workerPage = loadApiAt('/', '', '', 'https://class-timetable.wangaoqi23.workers.dev');
 assert.equal(workerPage.api.isGitHubPagesMirror(), false);
@@ -258,9 +266,14 @@ assert.doesNotMatch(workspaceSource, /getToken|clearSession|Authorization|Bearer
 assert.match(loginHtml, /assets\/api-client\.js/);
 assert.doesNotMatch(loginHtml, /id="auth-username"[^>]*\spattern=/, 'browser username rules should defer to the Unicode-aware API validator');
 assert.match(loginHtml, /id="register-tab" class="auth-tab active"/);
+assert.match(loginHtml, /id="auth-full-name"/);
+assert.match(loginHtml, /id="auth-class"/);
 assert.match(loginHtml, /href="https:\/\/wangaoqi23\.github\.io\/class-timetable\/admin\/"/);
 assert.match(workspaceHtml, /assets\/workspace\.js/);
-assert.match(workspaceHtml, /class="sidebar-public-link" href="\.\.\/"/);
+assert.match(workspaceHtml, /id="schedule-kind"/);
+assert.match(workspaceSource, /PUBLIC_SCHEDULE_ID/);
+assert.match(workspaceSource, /publicScheduleForUser/);
+assert.match(workspaceSource, /timetable_last_schedule_/);
 assert.match(importHtml, /assets\/import\.js/);
 assert.match(importHtml, /class="nav-link" href="\.\.\/">公共课表/);
 assert.match(importHtml, /meta name="app-root" content="\.\.\/"/);

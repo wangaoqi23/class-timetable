@@ -5,9 +5,11 @@
   if (!Api || Api.redirectAccountPageToPrimary()) return;
 
   const U = window.ScheduleUtils;
+  const PUBLIC_SCHEDULE_ID = 'public-base';
   const state = {
     user: null,
     schedules: [],
+    publicRecord: null,
     record: null,
     schedule: null,
     classId: '',
@@ -20,7 +22,7 @@
   const byId = (id) => document.getElementById(id);
   const elements = {
     userName: byId('user-name'), logout: byId('logout'), list: byId('schedule-list'), loading: byId('workspace-loading'), empty: byId('workspace-empty'), editor: byId('workspace-editor'), error: byId('workspace-error'), success: byId('workspace-success'),
-    activeName: byId('active-schedule-name'), saveStatus: byId('save-status'), newSchedule: byId('new-schedule'), newScheduleSecondary: byId('new-schedule-secondary'), emptyCreate: byId('empty-create'), rename: byId('rename-schedule'), share: byId('share-schedule'), remove: byId('delete-schedule'),
+    activeName: byId('active-schedule-name'), scheduleKind: byId('schedule-kind'), saveStatus: byId('save-status'), storageStatus: byId('storage-status'), newSchedule: byId('new-schedule'), newScheduleSecondary: byId('new-schedule-secondary'), emptyCreate: byId('empty-create'), rename: byId('rename-schedule'), share: byId('share-schedule'), remove: byId('delete-schedule'),
     viewButton: byId('view-mode-button'), editButton: byId('edit-mode-button'), view: byId('schedule-view'), edit: byId('schedule-edit'),
     viewClass: byId('view-class'), viewWeek: byId('view-week'), previousWeek: byId('view-previous-week'), nextWeek: byId('view-next-week'), currentWeek: byId('view-current-week'), weekNumber: byId('view-week-number'), thisWeek: byId('view-this-week'), term: byId('view-term'), courseCount: byId('view-course-count'), timetable: byId('workspace-timetable'), mobile: byId('workspace-mobile-schedule'), noLessons: byId('workspace-no-lessons'),
     title: byId('edit-title'), termInput: byId('edit-term'), startDate: byId('edit-start-date'), weeks: byId('edit-weeks'), periods: byId('edit-periods'), save: byId('save-schedule'), saveSecondary: byId('save-schedule-secondary'), discard: byId('discard-changes'), dirtyLabel: byId('dirty-label'),
@@ -92,8 +94,54 @@
     setDirty(state.dirty);
   }
 
+  function isPublicSchedule() {
+    return state.record?.id === PUBLIC_SCHEDULE_ID;
+  }
+
+  function publicScheduleForUser(data) {
+    const schedule = U.clone(data);
+    const selected = schedule.classes.find((item) => item.id === state.user?.classId) || schedule.classes[0];
+    schedule.classes = selected ? [selected] : [];
+    schedule.lessons = selected ? schedule.lessons.filter((lesson) => lesson.classId === selected.id) : [];
+    return schedule;
+  }
+
+  function personalScheduleFromPublic(data) {
+    const schedule = publicScheduleForUser(data);
+    schedule.title = `${state.user?.fullName || state.user?.username || '我的'}的课表`;
+    schedule.demo = false;
+    return schedule;
+  }
+
+  function applySchedulePermissions() {
+    const publicView = isPublicSchedule();
+    elements.scheduleKind.textContent = publicView ? 'PUBLIC BASE TIMETABLE' : 'PERSONAL TIMETABLE';
+    elements.rename.disabled = publicView;
+    elements.share.disabled = publicView;
+    elements.remove.disabled = publicView;
+    elements.editButton.disabled = publicView;
+    elements.storageStatus.textContent = publicView ? '公共基础课表 · 只读' : '个人课表已保存到当前设备';
+    if (publicView) {
+      elements.saveStatus.textContent = '公共基础课表 · 由管理员发布';
+      setMode('view');
+    }
+  }
+
   function renderScheduleList() {
     elements.list.replaceChildren();
+    if (state.publicRecord) {
+      const publicButton = document.createElement('button');
+      publicButton.type = 'button';
+      publicButton.className = 'schedule-list-item public-schedule-item';
+      publicButton.classList.toggle('active', isPublicSchedule());
+      const name = document.createElement('strong');
+      name.textContent = '公共基础课表';
+      const detail = document.createElement('span');
+      detail.textContent = state.user?.className || state.publicRecord.data.classes[0]?.name || '学校统一课程';
+      publicButton.append(name, detail);
+      publicButton.addEventListener('click', selectPublicSchedule);
+      elements.list.append(publicButton);
+    }
     state.schedules.forEach((item) => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -118,11 +166,15 @@
     return { ...raw, data };
   }
 
+  function recordSummary(record) {
+    return { id: record.id, name: record.name, title: record.data.title, term: record.data.term, version: record.version, createdAt: record.createdAt, updatedAt: record.updatedAt };
+  }
+
   function updateSummary(record) {
     const index = state.schedules.findIndex((item) => item.id === record.id);
-    const summary = { id: record.id, name: record.name, title: record.data.title, term: record.data.term, version: record.version, createdAt: record.createdAt, updatedAt: record.updatedAt };
-    if (index >= 0) state.schedules[index] = { ...state.schedules[index], ...summary };
-    else state.schedules.push(summary);
+    const nextSummary = recordSummary(record);
+    if (index >= 0) state.schedules[index] = { ...state.schedules[index], ...nextSummary };
+    else state.schedules.push(nextSummary);
     renderScheduleList();
   }
 
@@ -316,9 +368,28 @@
     elements.empty.hidden = true;
     elements.editor.hidden = false;
     setDirty(false);
+    applySchedulePermissions();
+  }
+
+  function rememberSelection(id) {
+    if (state.user?.id) localStorage.setItem(`timetable_last_schedule_${state.user.id}`, id);
+  }
+
+  async function selectPublicSchedule() {
+    if (!state.publicRecord || state.record?.id === PUBLIC_SCHEDULE_ID) return;
+    if (state.dirty && !window.confirm('当前有未保存的更改，仍要切换课表吗？')) return;
+    clearMessages();
+    state.record = state.publicRecord;
+    state.schedule = U.clone(state.publicRecord.data);
+    state.classId = state.schedule.classes[0]?.id || '';
+    state.week = Math.max(1, Math.min(state.schedule.weeks, U.currentWeek(state.schedule)));
+    renderWorkspace();
+    updateScheduleUrl(PUBLIC_SCHEDULE_ID);
+    rememberSelection(PUBLIC_SCHEDULE_ID);
   }
 
   async function selectSchedule(id, options) {
+    if (id === PUBLIC_SCHEDULE_ID) return selectPublicSchedule();
     if (!id || (id === state.record?.id && !options?.reload)) return;
     if (state.dirty && !options?.force && !window.confirm('当前有未保存的更改，仍要切换课表吗？')) return;
     clearMessages();
@@ -331,20 +402,51 @@
       state.week = Math.max(1, Math.min(state.schedule.weeks, U.currentWeek(state.schedule)));
       renderWorkspace();
       updateScheduleUrl(record.id);
+      rememberSelection(record.id);
     } catch (error) { showMessage('error', error instanceof Error ? error.message : '课表加载失败。'); }
   }
 
   async function loadAccount() {
     try {
-      const [mePayload, schedulesPayload] = await Promise.all([Api.request('/api/auth/me'), Api.request('/api/schedules')]);
+      const [mePayload, schedulesPayload, publicResponse] = await Promise.all([
+        Api.request('/api/auth/me'),
+        Api.request('/api/schedules'),
+        fetch(Api.rootUrl('data/schedule.json'), { cache: 'force-cache' }),
+      ]);
+      if (!publicResponse.ok) throw new Error('公共基础课表加载失败。');
+      const publicData = await publicResponse.json();
       state.user = unwrap(mePayload, 'user');
       state.schedules = unwrap(schedulesPayload, 'schedules') || [];
-      elements.userName.textContent = state.user?.username || '我的账户';
+      const matchedClass = publicData.classes.find((item) => item.id === state.user?.classId) || publicData.classes[0];
+      if (!state.user.classId && matchedClass) state.user.classId = matchedClass.id;
+      if (!state.user.className && matchedClass) state.user.className = matchedClass.name;
+      state.publicRecord = {
+        id: PUBLIC_SCHEDULE_ID,
+        name: '公共基础课表',
+        data: publicScheduleForUser(publicData),
+        version: 0,
+        createdAt: null,
+        updatedAt: null,
+      };
+      elements.userName.textContent = [state.user?.fullName || state.user?.username, state.user?.className].filter(Boolean).join(' · ');
+
+      if (!state.schedules.length) {
+        const payload = await Api.request('/api/schedules', {
+          method: 'POST',
+          body: JSON.stringify({ name: '我的课表', data: personalScheduleFromPublic(publicData) }),
+        });
+        const record = normalizeRecord(unwrap(payload, 'schedule'));
+        state.schedules = [recordSummary(record)];
+      }
       renderScheduleList();
-      if (!state.schedules.length) { elements.loading.hidden = true; elements.empty.hidden = false; return; }
       const requested = new URLSearchParams(window.location.search).get('schedule');
-      const first = state.schedules.find((item) => item.id === requested) || state.schedules[0];
-      await selectSchedule(first.id, { force: true });
+      const remembered = localStorage.getItem(`timetable_last_schedule_${state.user.id}`);
+      const preferred = requested || remembered;
+      if (preferred === PUBLIC_SCHEDULE_ID) await selectPublicSchedule();
+      else {
+        const first = state.schedules.find((item) => item.id === preferred) || state.schedules[0];
+        await selectSchedule(first.id, { force: true });
+      }
     } catch (error) {
       elements.loading.hidden = true;
       showMessage('error', error instanceof Error ? error.message : '账户加载失败。');

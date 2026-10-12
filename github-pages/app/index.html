@@ -17,11 +17,10 @@
     </header>
 
     <main class="workspace-shell">
-      <aside class="schedule-sidebar" aria-label="我的课表">
-        <div class="sidebar-heading"><div><p class="eyebrow">MY SCHEDULES</p><h1>我的课表</h1></div><button class="icon-button primary-icon" id="new-schedule" type="button" aria-label="新建课表">＋</button></div>
+      <aside class="schedule-sidebar" aria-label="课表中心">
+        <div class="sidebar-heading"><div><p class="eyebrow">ALL SCHEDULES</p><h1>课表中心</h1></div><button class="icon-button primary-icon" id="new-schedule" type="button" aria-label="新建课表">＋</button></div>
         <div class="schedule-list" id="schedule-list"></div>
         <button class="button sidebar-create" id="new-schedule-secondary" type="button">＋ 新建课表</button>
-        <a class="sidebar-public-link" href="../">查看公共课表</a>
       </aside>
 
       <section class="workspace-main">
@@ -34,7 +33,7 @@
 
         <div id="workspace-editor" hidden>
           <section class="workspace-toolbar">
-            <div><p class="eyebrow">PERSONAL TIMETABLE</p><h1 id="active-schedule-name"></h1><p class="subtle" id="save-status">所有更改已保存</p></div>
+            <div><p class="eyebrow" id="schedule-kind">PERSONAL TIMETABLE</p><h1 id="active-schedule-name"></h1><p class="subtle" id="save-status">所有更改已保存</p></div>
             <div class="toolbar-actions">
               <button class="button" id="rename-schedule" type="button">重命名</button>
               <button class="button" id="share-schedule" type="button">分享</button>
@@ -54,7 +53,7 @@
               <button class="button" id="view-current-week" type="button">回到本周</button>
             </div>
             <div class="week-banner"><div class="week-summary"><span class="calendar-symbol" aria-hidden="true">◆</span><strong id="view-week-number"></strong><span class="badge" id="view-this-week" hidden>本周</span><span class="term-label" id="view-term"></span></div><span class="course-count" id="view-course-count"></span></div>
-            <div class="board"><div class="timetable-scroll"><div class="timetable" id="workspace-timetable"></div></div><div class="mobile-schedule" id="workspace-mobile-schedule"></div><div class="empty-state" id="workspace-no-lessons" hidden>这一周暂无课程安排。</div><div class="board-footer"><span>点击课程卡片查看详情</span><span>个人数据已云端同步</span></div></div>
+            <div class="board"><div class="timetable-scroll"><div class="timetable" id="workspace-timetable"></div></div><div class="mobile-schedule" id="workspace-mobile-schedule"></div><div class="empty-state" id="workspace-no-lessons" hidden>这一周暂无课程安排。</div><div class="board-footer"><span>点击课程卡片查看详情</span><span id="storage-status">个人课表已保存到当前设备</span></div></div>
           </section>
 
           <section id="schedule-edit" hidden aria-label="编辑课表">

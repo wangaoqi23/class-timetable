@@ -4,7 +4,7 @@ compatibility_date = "2026-05-22"
 
 [vars]
 APP_ORIGIN = "https://wangaoqi23.github.io"
-PASSWORD_ITERATIONS = "210000"
+PASSWORD_ITERATIONS = "100000"
 PUBLIC_SCHEDULE_URL = "https://raw.githubusercontent.com/wangaoqi23/class-timetable/main/github-pages/data/schedule.json"
 # Set ALLOW_LOCALHOST_ORIGIN = "true" only in a local development override.
 

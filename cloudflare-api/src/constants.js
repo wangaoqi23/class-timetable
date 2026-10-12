@@ -1,9 +1,9 @@
 export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const SESSION_COOKIE = 'tt_session';
 export const CSRF_COOKIE = 'tt_csrf';
-export const DEFAULT_PASSWORD_ITERATIONS = 210_000;
+export const DEFAULT_PASSWORD_ITERATIONS = 100_000;
 export const MIN_PASSWORD_ITERATIONS = 100_000;
-export const MAX_PASSWORD_ITERATIONS = 1_000_000;
+export const MAX_PASSWORD_ITERATIONS = 100_000;
 export const MAX_JSON_BYTES = 384 * 1024;
 export const MAX_SCHEDULES_PER_USER = 100;
 export const MAX_SHARES_PER_USER = 200;

@@ -7,7 +7,7 @@
 ## 安全模型
 
 - 用户名使用 NFKC 规范化后做唯一性比较，可使用中英文、数字、点、下划线和连字符。
-- 密码使用 Web Crypto `PBKDF2-HMAC-SHA-256`、16 字节随机盐和默认 210,000 次迭代。每条用户记录保存自己的迭代次数，登录时可自动升级旧参数。
+- 密码使用 Web Crypto `PBKDF2-HMAC-SHA-256`、16 字节随机盐和 100,000 次迭代（Cloudflare Workers Web Crypto 当前支持的上限）。每条用户记录保存自己的迭代次数。
 - 会话令牌是 32 字节随机不透明值，有效期 30 天。原始值只进入 `Secure; HttpOnly; SameSite=Lax` Cookie，D1 仅保存 SHA-256 摘要。
 - 分享令牌同样使用 32 字节随机值，链接放在 `/import/#<token>` 的 URL 片段中，D1 只保存 SHA-256 摘要。拥有者列表只返回用于撤销的记录 ID，无法重新导出原分享链接。
 - 登录和注册严格校验 `Origin`。其他写操作还要求 `X-CSRF-Token` 与可读的 `tt_csrf` Cookie 常量时间相等。

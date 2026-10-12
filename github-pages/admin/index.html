@@ -38,6 +38,19 @@
       <div class="notice error-notice" id="admin-error" role="alert" hidden></div>
       <div class="notice success-notice" id="admin-success" role="status" hidden></div>
 
+      <section class="panel account-admin-panel" aria-labelledby="accounts-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">ACCOUNT MANAGEMENT</p>
+            <h2 id="accounts-title">账号管理</h2>
+            <p class="subtle" id="account-summary">正在读取本机账号…</p>
+          </div>
+          <button class="button" id="refresh-accounts" type="button">刷新账号</button>
+        </div>
+        <p class="panel-help">这里管理当前设备、当前浏览器中注册的账号。可修改姓名与班级、重置密码，或删除账号及其全部个人课表。</p>
+        <div class="account-admin-list" id="account-admin-list" aria-live="polite"></div>
+      </section>
+
       <section class="panel connection-panel" aria-labelledby="connection-title">
         <div class="panel-heading">
           <div>
@@ -149,6 +162,27 @@
         <div class="dialog-actions">
           <button class="button" type="button" data-close-dialog="lesson-editor-dialog">取消</button>
           <button class="button primary" type="submit">保存课程</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="dialog editor-dialog" id="account-editor-dialog">
+      <form id="account-form">
+        <button class="dialog-close" type="button" data-close-dialog="account-editor-dialog" aria-label="关闭">×</button>
+        <p class="eyebrow">ACCOUNT</p>
+        <h2>编辑账号</h2>
+        <input id="account-id" type="hidden" />
+        <div class="account-dialog-identity">
+          <span>登录账号</span>
+          <strong id="account-username"></strong>
+        </div>
+        <label>用户姓名<input id="account-full-name" required minlength="2" maxlength="30" autocomplete="name" /></label>
+        <label>专业班级<select id="account-class" required></select></label>
+        <label>重置密码（不修改请留空）<input id="account-password" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="8–128 位新密码" /></label>
+        <p class="panel-help account-password-help">重置后，用户下次登录需要使用新密码。</p>
+        <div class="dialog-actions">
+          <button class="button" type="button" data-close-dialog="account-editor-dialog">取消</button>
+          <button class="button primary" type="submit">保存账号</button>
         </div>
       </form>
     </dialog>

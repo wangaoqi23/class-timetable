@@ -766,6 +766,71 @@ textarea {
   gap: 7px;
 }
 
+.account-admin-list {
+  display: grid;
+  gap: 10px;
+}
+
+.account-admin-row {
+  display: grid;
+  align-items: center;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  grid-template-columns: minmax(150px, 1.15fr) minmax(150px, 1fr) 90px auto;
+  gap: 16px;
+  background: #fff;
+}
+
+.account-admin-identity strong,
+.account-admin-identity span,
+.account-admin-meta strong,
+.account-admin-meta span,
+.account-admin-stat strong,
+.account-admin-stat span {
+  display: block;
+}
+
+.account-admin-identity span,
+.account-admin-meta span,
+.account-admin-stat span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.account-admin-stat strong {
+  color: var(--primary);
+  font-size: 21px;
+}
+
+.account-admin-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.account-dialog-identity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--surface-muted);
+  font-size: 13px;
+}
+
+.account-dialog-identity strong {
+  color: var(--ink);
+}
+
+.account-password-help {
+  margin: 8px 0 0;
+}
+
 .save-bar {
   position: sticky;
   z-index: 15;
@@ -1763,7 +1828,8 @@ textarea {
   .connection-form,
   .form-grid,
   .settings-grid,
-  .admin-lesson {
+  .admin-lesson,
+  .account-admin-row {
     grid-template-columns: 1fr;
   }
 
@@ -1776,8 +1842,13 @@ textarea {
     justify-self: stretch;
   }
 
-  .admin-lesson-actions .mini-button {
+  .admin-lesson-actions .mini-button,
+  .account-admin-actions .mini-button {
     flex: 1;
+  }
+
+  .account-admin-actions {
+    justify-content: stretch;
   }
 
   .save-actions {

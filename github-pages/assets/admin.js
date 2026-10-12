@@ -4,6 +4,8 @@
   const U = window.ScheduleUtils;
   const DATA_PATH = 'github-pages/data/schedule.json';
   const API_VERSION = '2022-11-28';
+  const LOCAL_STATE_KEY = 'timetable_local_state_v1';
+  const PASSWORD_ITERATIONS = 100000;
   const state = {
     schedule: null,
     sha: '',
@@ -61,7 +63,19 @@
     lessonFrom: byId('lesson-from'),
     lessonTo: byId('lesson-to'),
     lessonColor: byId('lesson-color'),
+    accountSummary: byId('account-summary'),
+    accountList: byId('account-admin-list'),
+    refreshAccounts: byId('refresh-accounts'),
+    accountDialog: byId('account-editor-dialog'),
+    accountForm: byId('account-form'),
+    accountId: byId('account-id'),
+    accountUsername: byId('account-username'),
+    accountFullName: byId('account-full-name'),
+    accountClass: byId('account-class'),
+    accountPassword: byId('account-password'),
   };
+
+  let accountClasses = [];
 
   function showMessage(kind, message) {
     const target = kind === 'error' ? elements.error : elements.success;
@@ -209,6 +223,193 @@
     button.textContent = label;
     button.addEventListener('click', handler);
     return button;
+  }
+
+  function loadAccountState() {
+    const empty = { version: 1, users: [], schedules: [], session: null };
+    try {
+      const parsed = JSON.parse(localStorage.getItem(LOCAL_STATE_KEY) || 'null');
+      if (!parsed || !Array.isArray(parsed.users) || !Array.isArray(parsed.schedules)) return empty;
+      return { ...empty, ...parsed };
+    } catch {
+      return empty;
+    }
+  }
+
+  function saveAccountState(accountState) {
+    localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify(accountState));
+  }
+
+  function formatAccountDate(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '时间未知';
+    return date.toLocaleString('zh-CN', { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function renderAccounts() {
+    const accountState = loadAccountState();
+    elements.accountList.replaceChildren();
+    elements.accountSummary.textContent = accountState.users.length
+      ? `本机共 ${accountState.users.length} 个账号`
+      : '本机还没有注册账号';
+    if (!accountState.users.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = '用户在此浏览器完成注册后，账号会显示在这里。';
+      elements.accountList.append(empty);
+      return;
+    }
+    accountState.users
+      .slice()
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+      .forEach((user) => {
+        const row = document.createElement('article');
+        row.className = 'account-admin-row';
+
+        const identity = document.createElement('div');
+        identity.className = 'account-admin-identity';
+        const name = document.createElement('strong');
+        name.textContent = user.fullName || user.username;
+        const username = document.createElement('span');
+        username.textContent = `账号：${user.username}`;
+        identity.append(name, username);
+
+        const profile = document.createElement('div');
+        profile.className = 'account-admin-meta';
+        const className = document.createElement('strong');
+        className.textContent = user.className || '未选择班级';
+        const createdAt = document.createElement('span');
+        createdAt.textContent = `注册：${formatAccountDate(user.createdAt)}`;
+        profile.append(className, createdAt);
+
+        const scheduleCount = accountState.schedules.filter((item) => item.userId === user.id).length;
+        const stats = document.createElement('div');
+        stats.className = 'account-admin-stat';
+        const count = document.createElement('strong');
+        count.textContent = String(scheduleCount);
+        const countLabel = document.createElement('span');
+        countLabel.textContent = '个人课表';
+        stats.append(count, countLabel);
+
+        const actions = document.createElement('div');
+        actions.className = 'account-admin-actions';
+        actions.append(
+          miniButton('编辑 / 重置密码', () => openAccountDialog(user)),
+          miniButton('删除账号', () => deleteAccount(user), true),
+        );
+        row.append(identity, profile, stats, actions);
+        elements.accountList.append(row);
+      });
+  }
+
+  function fillAccountClasses(selectedId, fallbackName) {
+    elements.accountClass.replaceChildren();
+    accountClasses.forEach((schoolClass) => {
+      const option = document.createElement('option');
+      option.value = schoolClass.id;
+      option.textContent = schoolClass.name;
+      elements.accountClass.append(option);
+    });
+    if (selectedId && !accountClasses.some((item) => item.id === selectedId)) {
+      const legacy = document.createElement('option');
+      legacy.value = selectedId;
+      legacy.textContent = fallbackName || '原班级';
+      elements.accountClass.append(legacy);
+    }
+    elements.accountClass.value = selectedId || accountClasses[0]?.id || '';
+  }
+
+  function openAccountDialog(user) {
+    elements.accountId.value = user.id;
+    elements.accountUsername.textContent = user.username;
+    elements.accountFullName.value = user.fullName || user.username;
+    elements.accountPassword.value = '';
+    fillAccountClasses(user.classId, user.className);
+    elements.accountDialog.showModal();
+    elements.accountFullName.focus();
+  }
+
+  function bytesToBase64Url(bytes) {
+    let binary = '';
+    bytes.forEach((value) => { binary += String.fromCharCode(value); });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+
+  async function passwordHash(password, salt) {
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: PASSWORD_ITERATIONS },
+      key,
+      256,
+    );
+    return bytesToBase64Url(new Uint8Array(bits));
+  }
+
+  async function saveAccount(event) {
+    event.preventDefault();
+    const accountState = loadAccountState();
+    const user = accountState.users.find((item) => item.id === elements.accountId.value);
+    if (!user) {
+      elements.accountDialog.close();
+      renderAccounts();
+      showMessage('error', '账号已不存在，请刷新后重试。');
+      return;
+    }
+    const fullName = elements.accountFullName.value.trim();
+    if (fullName.length < 2 || fullName.length > 30) {
+      elements.accountFullName.setCustomValidity('姓名需为 2–30 位。');
+      elements.accountFullName.reportValidity();
+      return;
+    }
+    const schoolClass = accountClasses.find((item) => item.id === elements.accountClass.value);
+    if (!schoolClass && elements.accountClass.value !== user.classId) {
+      showMessage('error', '请选择有效班级。');
+      return;
+    }
+    const password = elements.accountPassword.value;
+    if (password && (password.length < 8 || password.length > 128)) {
+      elements.accountPassword.setCustomValidity('密码需为 8–128 位。');
+      elements.accountPassword.reportValidity();
+      return;
+    }
+    elements.accountFullName.setCustomValidity('');
+    elements.accountPassword.setCustomValidity('');
+    user.fullName = fullName;
+    user.classId = elements.accountClass.value;
+    user.className = schoolClass ? schoolClass.name : user.className;
+    if (password) {
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      user.passwordSalt = bytesToBase64Url(salt);
+      user.passwordHash = await passwordHash(password, salt);
+    }
+    saveAccountState(accountState);
+    elements.accountDialog.close();
+    renderAccounts();
+    showMessage('success', password ? `已更新“${user.username}”并重置密码。` : `已更新“${user.username}”。`);
+  }
+
+  function deleteAccount(user) {
+    const accountState = loadAccountState();
+    const scheduleCount = accountState.schedules.filter((item) => item.userId === user.id).length;
+    if (!confirm(`删除账号“${user.username}”及其 ${scheduleCount} 份个人课表？此操作无法撤销。`)) return;
+    accountState.users = accountState.users.filter((item) => item.id !== user.id);
+    accountState.schedules = accountState.schedules.filter((item) => item.userId !== user.id);
+    if (accountState.session?.userId === user.id) accountState.session = null;
+    localStorage.removeItem(`timetable_last_schedule_${user.id}`);
+    saveAccountState(accountState);
+    renderAccounts();
+    showMessage('success', `已删除账号“${user.username}”及其个人课表。`);
+  }
+
+  async function loadAccountClasses() {
+    try {
+      const response = await fetch('../data/schedule.json', { cache: 'force-cache' });
+      if (!response.ok) throw new Error('班级数据读取失败');
+      const schedule = await response.json();
+      accountClasses = Array.isArray(schedule.classes) ? schedule.classes : [];
+    } catch {
+      accountClasses = [];
+    }
   }
 
   function renderClasses() {
@@ -559,6 +760,12 @@
   });
   elements.className.addEventListener('input', () => elements.className.setCustomValidity(''));
   elements.lessonName.addEventListener('input', () => elements.lessonName.setCustomValidity(''));
+  elements.accountFullName.addEventListener('input', () => elements.accountFullName.setCustomValidity(''));
+  elements.accountPassword.addEventListener('input', () => elements.accountPassword.setCustomValidity(''));
+  elements.accountForm.addEventListener('submit', (event) => {
+    saveAccount(event).catch(() => showMessage('error', '账号保存失败，请稍后重试。'));
+  });
+  elements.refreshAccounts.addEventListener('click', renderAccounts);
   elements.reload.addEventListener('click', async () => {
     if (state.dirty && !confirm('放弃当前未提交的更改，并从仓库重新加载吗？')) return;
     try {
@@ -575,4 +782,5 @@
   });
 
   restoreConnectionFields();
+  loadAccountClasses().finally(renderAccounts);
 })();

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="app-root" content="../" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'" />
+    <meta name="description" content="预览并导入好友分享的课程表" />
+    <title>导入课表 · 课间</title>
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body class="import-page">
+    <header class="topbar">
+      <a class="brand" href="https://wangaoqi23.github.io/class-timetable/"><span class="brand-mark" aria-hidden="true">课</span><span>课间</span><span class="brand-suffix">/ 分享导入</span></a>
+      <nav aria-label="主要导航"><a class="nav-link" href="https://wangaoqi23.github.io/class-timetable/">公开课表</a><a class="nav-link" href="../app/">我的课表</a></nav>
+    </header>
+
+    <main class="import-shell">
+      <section class="import-loading" id="import-loading" aria-live="polite">
+        <span class="loading-dot" aria-hidden="true"></span>
+        <h1>正在打开分享课表</h1>
+        <p>我们会先检查分享链接，再确认你的登录状态。</p>
+      </section>
+
+      <section class="import-error" id="import-error" hidden>
+        <span class="empty-illustration" aria-hidden="true">!</span>
+        <h1>暂时无法打开这份课表</h1>
+        <p id="import-error-text">分享链接可能无效或已经过期。</p>
+        <div class="import-error-actions"><button class="button primary" id="import-retry" type="button">重新加载</button><a class="button" href="https://wangaoqi23.github.io/class-timetable/">返回公开课表</a></div>
+      </section>
+
+      <div id="import-content" hidden>
+        <section class="import-heading">
+          <div>
+            <p class="eyebrow">SHARED TIMETABLE</p>
+            <h1 id="shared-name">好友分享的课表</h1>
+            <p class="subtle">先预览课程内容，再复制一份到自己的账户。导入后双方修改互不影响。</p>
+          </div>
+          <span class="import-safe-badge">只读预览</span>
+        </section>
+
+        <section class="import-summary-card" aria-label="分享课表信息">
+          <div class="import-title-block"><span class="calendar-symbol" aria-hidden="true">▦</span><div><strong id="shared-title"></strong><span id="shared-term"></span></div></div>
+          <dl class="import-facts">
+            <div><dt>班级</dt><dd id="shared-class-count"></dd></div>
+            <div><dt>课程</dt><dd id="shared-lesson-count"></dd></div>
+            <div><dt>教学周</dt><dd id="shared-week-count"></dd></div>
+            <div><dt>链接有效期</dt><dd id="shared-expiry"></dd></div>
+          </dl>
+        </section>
+
+        <section class="import-preview-card" aria-labelledby="preview-title">
+          <div class="import-preview-heading">
+            <div><p class="eyebrow">PREVIEW</p><h2 id="preview-title">课程预览</h2></div>
+            <div class="import-preview-controls">
+              <label>班级<select id="import-class"></select></label>
+              <label>教学周<select id="import-week"></select></label>
+            </div>
+          </div>
+          <p class="import-course-count" id="import-course-count"></p>
+          <div class="import-day-list" id="import-day-list"></div>
+        </section>
+
+        <section class="import-action-card">
+          <div>
+            <p class="eyebrow">ADD TO MY SCHEDULES</p>
+            <h2>保存到我的课表</h2>
+            <p class="subtle" id="import-account">正在确认登录账户…</p>
+          </div>
+          <form class="import-form" id="import-form">
+            <label>导入后的名称<input id="import-name" maxlength="50" required /></label>
+            <button class="button primary import-submit" id="import-submit" type="submit">一键导入</button>
+          </form>
+          <div class="notice error-notice" id="import-action-error" role="alert" hidden></div>
+        </section>
+      </div>
+    </main>
+
+    <script src="../assets/api-client.js" defer></script>
+    <script src="../assets/shared.js" defer></script>
+    <script src="../assets/import.js" defer></script>
+  </body>
+</html>

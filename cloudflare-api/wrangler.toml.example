@@ -1,0 +1,22 @@
+name = "class-timetable"
+main = "src/index.js"
+compatibility_date = "2026-05-22"
+
+[vars]
+APP_ORIGIN = "https://wangaoqi23.github.io"
+PASSWORD_ITERATIONS = "210000"
+# Set ALLOW_LOCALHOST_ORIGIN = "true" only in a local development override.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "class-timetable"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+# Keeping assets and /api on one Worker origin lets the Secure SameSite cookie
+# work without exposing the session token to JavaScript.
+[assets]
+directory = "../github-pages"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+not_found_handling = "single-page-application"

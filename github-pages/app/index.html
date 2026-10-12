@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="app-root" content="../" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'" />
+    <meta name="description" content="你的个人课程表工作台" />
+    <title>我的课表 · 课间</title>
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body class="workspace-page">
+    <header class="topbar app-topbar">
+      <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">课</span><span>课间</span><span class="brand-suffix">/ 我的课表</span></a>
+      <div class="account-actions"><span class="user-chip" id="user-name">正在登录…</span><button class="nav-link button-link" id="logout" type="button">退出登录</button></div>
+    </header>
+
+    <main class="workspace-shell">
+      <aside class="schedule-sidebar" aria-label="我的课表">
+        <div class="sidebar-heading"><div><p class="eyebrow">MY SCHEDULES</p><h1>我的课表</h1></div><button class="icon-button primary-icon" id="new-schedule" type="button" aria-label="新建课表">＋</button></div>
+        <div class="schedule-list" id="schedule-list"></div>
+        <button class="button sidebar-create" id="new-schedule-secondary" type="button">＋ 新建课表</button>
+        <a class="sidebar-public-link" href="https://wangaoqi23.github.io/class-timetable/">查看公开课表与管理员后台</a>
+      </aside>
+
+      <section class="workspace-main">
+        <div class="notice error-notice" id="workspace-error" role="alert" hidden></div>
+        <div class="notice success-notice" id="workspace-success" role="status" hidden></div>
+        <section class="workspace-loading" id="workspace-loading"><span class="loading-dot" aria-hidden="true"></span><p>正在加载你的课表…</p></section>
+        <section class="workspace-empty" id="workspace-empty" hidden>
+          <span class="empty-illustration" aria-hidden="true">＋</span><h2>创建你的第一份课表</h2><p>设置学期和上课时间，然后添加班级与课程。</p><button class="button primary" id="empty-create" type="button">新建课表</button>
+        </section>
+
+        <div id="workspace-editor" hidden>
+          <section class="workspace-toolbar">
+            <div><p class="eyebrow">PERSONAL TIMETABLE</p><h1 id="active-schedule-name"></h1><p class="subtle" id="save-status">所有更改已保存</p></div>
+            <div class="toolbar-actions">
+              <button class="button" id="rename-schedule" type="button">重命名</button>
+              <button class="button" id="share-schedule" type="button">分享</button>
+              <button class="button danger" id="delete-schedule" type="button">删除</button>
+            </div>
+          </section>
+
+          <div class="mode-switch" role="tablist" aria-label="课表模式">
+            <button class="mode-button active" id="view-mode-button" type="button" role="tab" aria-selected="true">查看课表</button>
+            <button class="mode-button" id="edit-mode-button" type="button" role="tab" aria-selected="false">编辑课表</button>
+          </div>
+
+          <section id="schedule-view" aria-label="课表预览">
+            <div class="viewer-controls">
+              <label>班级<select id="view-class"></select></label>
+              <div class="week-nav"><button class="icon-button" id="view-previous-week" type="button" aria-label="上一周">‹</button><label>教学周<select id="view-week"></select></label><button class="icon-button" id="view-next-week" type="button" aria-label="下一周">›</button></div>
+              <button class="button" id="view-current-week" type="button">回到本周</button>
+            </div>
+            <div class="week-banner"><div class="week-summary"><span class="calendar-symbol" aria-hidden="true">◆</span><strong id="view-week-number"></strong><span class="badge" id="view-this-week" hidden>本周</span><span class="term-label" id="view-term"></span></div><span class="course-count" id="view-course-count"></span></div>
+            <div class="board"><div class="timetable-scroll"><div class="timetable" id="workspace-timetable"></div></div><div class="mobile-schedule" id="workspace-mobile-schedule"></div><div class="empty-state" id="workspace-no-lessons" hidden>这一周暂无课程安排。</div><div class="board-footer"><span>点击课程卡片查看详情</span><span>个人数据已云端同步</span></div></div>
+          </section>
+
+          <section id="schedule-edit" hidden aria-label="编辑课表">
+            <section class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">TERM & PERIODS</p><h2>学期与节次</h2></div><button class="button primary" id="save-schedule" type="button">保存更改</button></div>
+              <div class="form-grid settings-grid">
+                <label>课表标题<input id="edit-title" maxlength="24" required /></label>
+                <label>学期名称<input id="edit-term" maxlength="80" required /></label>
+                <label>学期首个周一<input id="edit-start-date" type="date" required /></label>
+                <label>教学周数<input id="edit-weeks" type="number" min="1" max="30" required /></label>
+                <label class="full-field">节次与时间<textarea id="edit-periods" rows="10" spellcheck="false" aria-describedby="edit-periods-help"></textarea></label>
+              </div>
+              <p class="panel-help" id="edit-periods-help">每行：节次名称 | 开始时间 | 结束时间，例如“第 1 节 | 08:30 | 09:15”。</p>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">CLASSES</p><h2>班级</h2></div><button class="button primary" id="add-class" type="button">新增班级</button></div>
+              <div class="class-admin" id="workspace-class-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading"><div><p class="eyebrow">COURSES</p><h2>课程</h2><p class="subtle" id="editing-class-name"></p></div><button class="button primary" id="add-lesson" type="button">新增课程</button></div>
+              <div class="lesson-admin-list" id="workspace-lesson-list"></div>
+            </section>
+
+            <section class="save-bar"><div><strong id="dirty-label">所有更改已保存</strong><p>课表只会保存到当前登录账户。</p></div><div class="save-actions"><button class="button" id="discard-changes" type="button">放弃更改</button><button class="button primary" id="save-schedule-secondary" type="button">保存更改</button></div></section>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="dialog editor-dialog" id="schedule-dialog"><form id="schedule-form"><button class="dialog-close" type="button" data-close-dialog="schedule-dialog" aria-label="关闭">×</button><p class="eyebrow">SCHEDULE</p><h2 id="schedule-dialog-title">新建课表</h2><label>课表名称<input id="schedule-dialog-name" maxlength="50" required placeholder="例如：大一上学期" /></label><div class="dialog-actions"><button class="button" type="button" data-close-dialog="schedule-dialog">取消</button><button class="button primary" type="submit">确认</button></div></form></dialog>
+
+    <dialog class="dialog editor-dialog" id="class-dialog"><form id="class-form"><button class="dialog-close" type="button" data-close-dialog="class-dialog" aria-label="关闭">×</button><p class="eyebrow">CLASS</p><h2 id="class-dialog-title">新增班级</h2><input id="class-id" type="hidden" /><label>班级名称<input id="class-name" maxlength="40" required /></label><label>年级 / 备注<input id="class-note" maxlength="80" /></label><div class="dialog-actions"><button class="button" type="button" data-close-dialog="class-dialog">取消</button><button class="button primary" type="submit">保存班级</button></div></form></dialog>
+
+    <dialog class="dialog editor-dialog" id="lesson-editor-dialog"><form id="lesson-form"><button class="dialog-close" type="button" data-close-dialog="lesson-editor-dialog" aria-label="关闭">×</button><p class="eyebrow">COURSE</p><h2 id="lesson-dialog-title">新增课程</h2><input id="lesson-id" type="hidden" /><div class="form-grid"><label class="full-field">课程名称<input id="lesson-name" maxlength="60" required /></label><label>任课教师<input id="lesson-teacher" maxlength="60" /></label><label>上课地点<input id="lesson-room" maxlength="80" /></label><label>星期<select id="lesson-day"></select></label><label>周次规则<select id="lesson-parity"><option value="all">每周</option><option value="odd">单周</option><option value="even">双周</option></select></label><label>起始节次<select id="lesson-start"></select></label><label>结束节次<select id="lesson-end"></select></label><label>起始教学周<input id="lesson-from" type="number" min="1" required /></label><label>结束教学周<input id="lesson-to" type="number" min="1" required /></label><label class="full-field">课程颜色<select id="lesson-color"><option value="blue">蓝色</option><option value="violet">紫色</option><option value="orange">橙色</option><option value="teal">绿色</option><option value="rose">粉色</option></select></label></div><div class="dialog-actions"><button class="button" type="button" data-close-dialog="lesson-editor-dialog">取消</button><button class="button primary" type="submit">保存课程</button></div></form></dialog>
+
+    <dialog class="dialog" id="lesson-detail-dialog"><form method="dialog"><button class="dialog-close" value="close" aria-label="关闭">×</button><p class="eyebrow">COURSE DETAIL</p><h2 id="detail-name"></h2><p class="subtle" id="detail-class"></p><dl class="details" id="detail-list"></dl></form></dialog>
+
+    <dialog class="dialog share-dialog" id="share-dialog"><form method="dialog"><button class="dialog-close" value="close" aria-label="关闭">×</button><p class="eyebrow">SHARE SCHEDULE</p><h2>课表分享链接</h2><p class="subtle">收到链接的人可以预览，并复制一份到自己的账户；之后双方修改互不影响。</p><label>分享链接<div class="copy-field"><input id="share-link" readonly /><button class="button primary" id="copy-share-link" type="button">复制</button></div></label><p class="share-expiry" id="share-expiry"></p></form></dialog>
+
+    <script src="../assets/api-client.js" defer></script>
+    <script src="../assets/shared.js" defer></script>
+    <script src="../assets/workspace.js" defer></script>
+  </body>
+</html>

@@ -1,49 +1,48 @@
-# 课间 · 多班级课程表
+# 课间 · 多用户课程表
 
-面向访客的中文课表网站，以及通过 GitHub 仓库权限保存修改的在线管理后台。
+支持公开查看、个人账户、独立课表编辑和链接分享的中文课程表网站。
 
 ## 在线地址
 
 - 公开课表：<https://wangaoqi23.github.io/class-timetable/>
-- 管理后台：<https://wangaoqi23.github.io/class-timetable/admin/>
+- 登录 / 注册：<https://class-timetable.wangaoqi23.workers.dev/login/>
+- 个人课表：<https://class-timetable.wangaoqi23.workers.dev/app/>
+- GitHub 课表管理后台：<https://wangaoqi23.github.io/class-timetable/admin/>
 
-GitHub Pages 发布文件位于 `github-pages/`，每次后台保存课表后，GitHub Actions 会自动更新公开网站。
+GitHub Pages 展示由管理后台维护的公共课表；它的账户入口会进入 Cloudflare Worker 上的账户系统。这样公共课表随 GitHub 提交自动更新，登录 Cookie、个人数据和 API 也保持同源。
 
 ## 功能
 
-- 按班级、教学周查看周一至周日课程，手机按天展示。
-- 课程详情包含任课教师、教室、节次与单双周。
-- 管理员新增、修改、删除班级和课程；设置网站名称、学期开始日期、教学周数、每日作息。
-- GitHub Pages 版将课表保存在 `github-pages/data/schedule.json`；公开查看无需账号，后台通过 GitHub Contents 权限保存。
-- 管理后台在提交前比较 Git blob SHA，防止多人编辑时覆盖较新的内容。
-- 内置明确标注的示例数据，可一键清除。修改过的示例课程转为正式课程并保留。
+- 注册、登录和 30 天安全会话；已经登录时自动进入个人课表。
+- 每位用户可创建多份独立课表，并自行修改班级、课程、周次、单双周、教室、教师和每日作息。
+- 生成课表分享链接；接收者可先预览，再一键复制到自己的账户中独立编辑。
+- 按班级和教学周查看课程，桌面显示周表，手机显示按天日程卡片。
+- 默认 10 节作息：08:30–09:15、09:15–10:00、10:20–11:05、11:05–11:50、13:00–13:45、13:45–14:30、14:50–15:35、15:35–16:20、18:00–18:45、18:45–19:30。
+- GitHub 管理后台直接维护 `github-pages/data/schedule.json`，供无需登录的访客查看公共课表。
 
-## GitHub Pages 管理
+## 结构
 
-打开上面的管理后台，填写仓库 `wangaoqi23/class-timetable`、分支 `main`，以及仅授权此仓库且 Contents 权限为 Read and write 的 Fine-grained PAT。没有 Fine-grained PAT 时，也可以使用只勾选 `public_repo` 的 Classic token。令牌只保存在当前标签页的 `sessionStorage`，不会写入源码、课表或网址。
+- `github-pages/`：公开课表、账户工作台和响应式前端静态资源。
+- `cloudflare-api/`：Cloudflare Worker API、D1 迁移、验证和集成测试。
+- `.github/workflows/deploy-pages.yml`：GitHub Pages 自动发布流程。
 
-详细说明见 [`github-pages/README.md`](github-pages/README.md)。
+## 检查与部署
 
-## 本地开发
-
-需要 Node.js >= 22.13 和 npm。安装依赖后启动：
+前端检查：
 
 ```sh
-npm run install:ci
-npm run db:generate
-npm run build
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_*.sql
-npm run dev
+npm run test:pages
 ```
 
-迁移文件名应替换为实际生成的文件，并按顺序每个仅执行一次。
-本地环境在未跟踪的 .dev.vars 中设置 ADMIN_EMAIL。只填写你实际使用的管理员邮箱，不能提交该文件。
-本地预览没有线上身份转发，/admin 默认会显示登录页；线上登录由 Sites 负责。
+Worker 检查和本地集成测试：
 
-## Sites 全栈版本
+```sh
+cd cloudflare-api
+npm test
+npm run check
+npm run db:migrate:local
+npm run dev
+# 在另一个终端运行 npm run test:integration
+```
 
-仓库也保留了原有 Vinext / React、Cloudflare Workers 与 D1 实现，Sites 保存发布版本并应用数据库迁移。
-.openai/hosting.json 保存站点身份和逻辑 DB 绑定，运行时管理员邮箱通过 Sites 的 ADMIN_EMAIL secret 配置。
-不要将管理员邮箱、访问令牌或本地数据库提交到源码仓库。
-
-未经登录或未获授权的访问者无法通过隐藏 URL 或直接请求 API 修改课表。
+远端部署使用被 Git 忽略的 `cloudflare-api/wrangler.toml`。创建 D1 并填写数据库 ID 后，依次运行 `npm run db:migrate:remote` 和 `npm run deploy`。详细说明见 [`cloudflare-api/README.md`](cloudflare-api/README.md) 与 [`github-pages/README.md`](github-pages/README.md)。

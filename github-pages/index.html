@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
+    <meta name="app-root" content="./" />
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'"
@@ -21,6 +22,7 @@
       </a>
       <nav aria-label="主要导航">
         <a class="nav-link active" href="./">查看课表</a>
+        <a class="nav-link" id="account-link" href="https://class-timetable.wangaoqi23.workers.dev/login/">登录 / 注册</a>
         <a class="nav-link" href="admin/">管理后台</a>
       </nav>
     </header>
@@ -89,5 +91,7 @@
 
     <script src="assets/shared.js" defer></script>
     <script src="assets/app.js" defer></script>
+    <script src="assets/api-client.js" defer></script>
+    <script src="assets/session-redirect.js" defer></script>
   </body>
 </html>

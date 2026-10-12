@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="app-root" content="../" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'" />
+    <meta name="description" content="登录课间，管理属于自己的课程表" />
+    <title>登录 · 课间</title>
+    <link rel="stylesheet" href="../assets/styles.css" />
+  </head>
+  <body class="account-page">
+    <header class="topbar">
+      <a class="brand" href="https://wangaoqi23.github.io/class-timetable/"><span class="brand-mark" aria-hidden="true">课</span><span>课间</span><span class="brand-suffix">/ 个人课表</span></a>
+      <nav aria-label="主要导航"><a class="nav-link" href="https://wangaoqi23.github.io/class-timetable/">公开课表</a><a class="nav-link active" href="./">登录</a></nav>
+    </header>
+    <main class="auth-shell">
+      <section class="auth-intro">
+        <p class="eyebrow">YOUR SCHEDULE, EVERYWHERE</p>
+        <h1>一份课表，随时查看和分享</h1>
+        <p class="subtle">登录后可保存多份独立课表，在手机和电脑间同步，并通过链接邀请同学一键导入。</p>
+        <ul class="feature-list"><li>每个账户拥有独立数据</li><li>支持多课表、班级和课程编辑</li><li>分享链接仅展示你主动分享的课表</li></ul>
+      </section>
+      <section class="auth-card" aria-labelledby="auth-title">
+        <div class="auth-tabs" role="tablist" aria-label="账户操作">
+          <button id="login-tab" class="auth-tab active" type="button" role="tab" aria-selected="true">登录</button>
+          <button id="register-tab" class="auth-tab" type="button" role="tab" aria-selected="false">注册</button>
+        </div>
+        <div class="notice error-notice" id="auth-error" role="alert" hidden></div>
+        <form id="auth-form">
+          <p class="eyebrow" id="auth-kicker">WELCOME BACK</p>
+          <h2 id="auth-title">登录你的账户</h2>
+          <label>用户名<input id="auth-username" autocomplete="username" minlength="3" maxlength="32" required placeholder="3–32 位字母、数字、点、下划线或连字符" /></label>
+          <label>密码<input id="auth-password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required placeholder="至少 8 位" /></label>
+          <button class="button primary auth-submit" id="auth-submit" type="submit">登录并进入</button>
+        </form>
+        <p class="auth-note">登录状态会保存在这台设备上，下次打开会自动进入个人课表。</p>
+      </section>
+    </main>
+    <script src="../assets/api-client.js" defer></script>
+    <script src="../assets/auth.js" defer></script>
+  </body>
+</html>

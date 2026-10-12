@@ -238,14 +238,30 @@
     return clone(record);
   }
 
-  function encodeShare(value) {
-    return base64Url(new TextEncoder().encode(JSON.stringify(value)));
+  async function transformBytes(bytes, type) {
+    const Stream = type === 'compress' ? window.CompressionStream : window.DecompressionStream;
+    if (typeof Stream !== 'function') throw new Error('unsupported');
+    const stream = new Blob([bytes]).stream().pipeThrough(new Stream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
   }
 
-  function decodeShare(token) {
+  async function encodeShare(value) {
+    const bytes = new TextEncoder().encode(JSON.stringify(value));
+    try {
+      return `z.${base64Url(await transformBytes(bytes, 'compress'))}`;
+    } catch {
+      return `j.${base64Url(bytes)}`;
+    }
+  }
+
+  async function decodeShare(token) {
     try {
       if (typeof token !== 'string' || !token || token.length > 100000) throw new Error();
-      const value = JSON.parse(new TextDecoder().decode(fromBase64Url(token)));
+      const compressed = token.startsWith('z.');
+      const encoded = token.startsWith('z.') || token.startsWith('j.') ? token.slice(2) : token;
+      let bytes = fromBase64Url(encoded);
+      if (compressed) bytes = await transformBytes(bytes, 'decompress');
+      const value = JSON.parse(new TextDecoder().decode(bytes));
       if (value?.v !== 1 || typeof value.name !== 'string' || !value.data || typeof value.data !== 'object') throw new Error();
       return value;
     } catch {
@@ -301,7 +317,7 @@
       return { user: userPayload(requireLocalUser(state)), session: { expiresAt: new Date(state.session.expiresAt).toISOString() } };
     }
     if (method === 'POST' && path === '/api/shares/preview') {
-      const shared = decodeShare(readBody().token);
+      const shared = await decodeShare(readBody().token);
       return { share: { name: shared.name, data: clone(shared.data), createdAt: shared.createdAt || null, expiresAt: null } };
     }
 
@@ -315,14 +331,14 @@
     }
     if (method === 'POST' && path === '/api/shares/import') {
       const body = readBody();
-      const shared = decodeShare(body.token);
+      const shared = await decodeShare(body.token);
       return { schedule: createLocalSchedule(state, user, scheduleName(body.name), shared.data) };
     }
 
     const shareMatch = path.match(/^\/api\/schedules\/([^/]+)\/shares$/);
     if (method === 'POST' && shareMatch) {
       const record = findOwnedSchedule(state, user, decodeURIComponent(shareMatch[1]));
-      const token = encodeShare({ v: 1, name: record.name, data: record.data, createdAt: new Date().toISOString() });
+      const token = await encodeShare({ v: 1, name: record.name, data: record.data, createdAt: new Date().toISOString() });
       return { share: { shareUrl: `${rootUrl('import/')}#${token}`, expiresAt: null } };
     }
 

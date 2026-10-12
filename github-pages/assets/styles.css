@@ -1282,7 +1282,100 @@ textarea {
   font-size: 12px;
 }
 
+.face-share {
+  display: grid;
+  align-items: center;
+  margin: 22px 0;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 24px;
+}
+
+.share-qr {
+  display: grid;
+  min-height: 210px;
+  padding: 12px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.share-qr img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.share-qr p {
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.face-share-info > span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.face-share-code {
+  display: block;
+  margin: 8px 0 10px;
+  color: var(--primary);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: clamp(34px, 7vw, 48px);
+  letter-spacing: 0.15em;
+}
+
+.face-share-info p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.share-link-label {
+  margin-top: 8px;
+}
+
 /* Shared timetable import */
+.import-code-card {
+  display: grid;
+  align-items: end;
+  margin: 10px 0 24px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 430px);
+  gap: 28px;
+  background: #fff;
+  box-shadow: 0 12px 38px rgb(31 44 73 / 6%);
+}
+
+.import-code-card h1 {
+  margin-bottom: 8px;
+  font-size: clamp(28px, 5vw, 42px);
+}
+
+.import-code-form {
+  display: grid;
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.import-code-form input {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+}
+
+.import-code-card .notice {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 .import-shell {
   width: min(1180px, calc(100% - 28px));
   margin: 0 auto;
@@ -1730,6 +1823,7 @@ textarea {
   }
 
   .copy-field,
+  .face-share,
   .import-preview-heading,
   .import-preview-controls,
   .import-form,
@@ -1742,6 +1836,20 @@ textarea {
   .import-preview-controls {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .face-share {
+    grid-template-columns: 1fr;
+  }
+
+  .share-qr {
+    width: min(100%, 250px);
+    min-height: 0;
+    margin: 0 auto;
+  }
+
+  .face-share-info {
+    text-align: center;
   }
 
   .copy-field .button,
@@ -1774,6 +1882,16 @@ textarea {
   .import-form {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .import-code-card,
+  .import-code-form {
+    grid-template-columns: 1fr;
+  }
+
+  .import-code-card {
+    padding: 19px 16px;
+    gap: 18px;
   }
 
   .import-loading,

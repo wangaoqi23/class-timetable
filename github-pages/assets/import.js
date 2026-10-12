@@ -5,13 +5,20 @@
   if (!Api || Api.redirectAccountPageToPrimary()) return;
 
   const U = window.ScheduleUtils;
-  const state = { shareId: '', share: null, schedule: null, user: null, classId: '', week: 1, importing: false };
+  const FACE_SHARE_API = 'https://class-timetable.wangaoqi23.workers.dev/api/face-shares/preview';
+  const state = { shareId: '', shareCode: '', share: null, schedule: null, user: null, classId: '', week: 1, importing: false };
   const byId = (id) => document.getElementById(id);
   const elements = {
     loading: byId('import-loading'),
+    codeEntry: byId('import-code-entry'),
+    codeForm: byId('import-code-form'),
+    codeInput: byId('import-code'),
+    codeSubmit: byId('import-code-submit'),
+    codeError: byId('import-code-error'),
     error: byId('import-error'),
     errorText: byId('import-error-text'),
     retry: byId('import-retry'),
+    enterCode: byId('import-enter-code'),
     content: byId('import-content'),
     name: byId('shared-name'),
     title: byId('shared-title'),
@@ -19,6 +26,7 @@
     classCount: byId('shared-class-count'),
     lessonCount: byId('shared-lesson-count'),
     weekCount: byId('shared-week-count'),
+    shareCode: byId('shared-code'),
     expiry: byId('shared-expiry'),
     classSelect: byId('import-class'),
     weekSelect: byId('import-week'),
@@ -60,10 +68,55 @@
   }
 
   function showFatalError(message) {
+    elements.codeEntry.hidden = true;
     elements.loading.hidden = true;
     elements.content.hidden = true;
     elements.error.hidden = false;
     elements.errorText.textContent = message;
+  }
+
+  function showCodeEntry() {
+    elements.loading.hidden = true;
+    elements.error.hidden = true;
+    elements.content.hidden = true;
+    elements.codeEntry.hidden = false;
+    elements.codeError.hidden = true;
+    elements.codeInput.focus();
+  }
+
+  async function resolveFaceCode(event) {
+    event.preventDefault();
+    const code = elements.codeInput.value.replace(/\D/g, '').slice(0, 6);
+    elements.codeInput.value = code;
+    elements.codeError.hidden = true;
+    if (!/^\d{6}$/.test(code)) {
+      elements.codeInput.setCustomValidity('请输入 6 位数字分享码。');
+      elements.codeInput.reportValidity();
+      return;
+    }
+    elements.codeInput.setCustomValidity('');
+    elements.codeSubmit.disabled = true;
+    elements.codeSubmit.textContent = '正在查找…';
+    try {
+      const response = await fetch(FACE_SHARE_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+        signal: AbortSignal.timeout(6000),
+      });
+      let payload = null;
+      try { payload = await response.json(); } catch { payload = null; }
+      if (!response.ok || !payload?.share?.token) {
+        throw new Error(response.status === 410 ? '分享码已过期，请让对方重新生成。' : '没有找到这个分享码，请检查后重试。');
+      }
+      window.location.hash = payload.share.token;
+    } catch (error) {
+      elements.codeError.textContent = error instanceof Error ? error.message : '暂时无法读取分享码。';
+      elements.codeError.hidden = false;
+    } finally {
+      elements.codeSubmit.disabled = false;
+      elements.codeSubmit.textContent = '打开课表';
+    }
   }
 
   function showActionError(message) {
@@ -87,6 +140,7 @@
     elements.classCount.textContent = schedule.classes.length + ' 个';
     elements.lessonCount.textContent = schedule.lessons.length + ' 门次';
     elements.weekCount.textContent = schedule.weeks + ' 周';
+    elements.shareCode.textContent = state.shareCode;
     elements.expiry.textContent = formatExpiry(share.expiresAt);
     elements.importName.value = sharedName.slice(0, 50);
   }
@@ -173,13 +227,20 @@
     state.shareId = shareIdFromLocation();
     elements.error.hidden = true;
     elements.content.hidden = true;
+    elements.codeEntry.hidden = true;
     elements.loading.hidden = false;
     showActionError('');
-    if (!state.shareId || state.shareId.length > 200) {
-      showFatalError('分享链接缺少有效的课表编号。');
+    if (!state.shareId) {
+      showCodeEntry();
+      return;
+    }
+    if (state.shareId.length > 100000) {
+      showFatalError('分享数据无效或不完整。');
       return;
     }
     try {
+      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(state.shareId)));
+      state.shareCode = String(new DataView(digest.buffer).getUint32(0) % 1000000).padStart(6, '0');
       const payload = await Api.request('/api/shares/preview', {
         method: 'POST',
         auth: false,
@@ -245,6 +306,13 @@
   });
   elements.form.addEventListener('submit', importSchedule);
   elements.retry.addEventListener('click', loadShare);
+  elements.enterCode.addEventListener('click', showCodeEntry);
+  elements.codeForm.addEventListener('submit', resolveFaceCode);
+  elements.codeInput.addEventListener('input', () => {
+    elements.codeInput.value = elements.codeInput.value.replace(/\D/g, '').slice(0, 6);
+    elements.codeInput.setCustomValidity('');
+    elements.codeError.hidden = true;
+  });
   window.addEventListener('hashchange', loadShare);
 
   loadShare();

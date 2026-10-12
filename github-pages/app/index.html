@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light" />
     <meta name="app-root" content="../" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://class-timetable.wangaoqi23.workers.dev; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'none'; form-action 'self'" />
     <meta name="description" content="你的个人课程表工作台" />
     <title>我的课表 · 课间</title>
     <link rel="stylesheet" href="../assets/styles.css" />
@@ -93,10 +93,11 @@
 
     <dialog class="dialog" id="lesson-detail-dialog"><form method="dialog"><button class="dialog-close" value="close" aria-label="关闭">×</button><p class="eyebrow">COURSE DETAIL</p><h2 id="detail-name"></h2><p class="subtle" id="detail-class"></p><dl class="details" id="detail-list"></dl></form></dialog>
 
-    <dialog class="dialog share-dialog" id="share-dialog"><form method="dialog"><button class="dialog-close" value="close" aria-label="关闭">×</button><p class="eyebrow">SHARE SCHEDULE</p><h2>课表分享链接</h2><p class="subtle">收到链接的人可以预览，并复制一份到自己的账户；之后双方修改互不影响。</p><label>分享链接<div class="copy-field"><input id="share-link" readonly /><button class="button primary" id="copy-share-link" type="button">复制</button></div></label><p class="share-expiry" id="share-expiry"></p></form></dialog>
+    <dialog class="dialog share-dialog" id="share-dialog"><form method="dialog"><button class="dialog-close" value="close" aria-label="关闭">×</button><p class="eyebrow">FACE-TO-FACE SHARE</p><h2>面对面分享课表</h2><p class="subtle">对方可以直接输入 6 位码，或使用手机相机扫描二维码。</p><div class="face-share"><div class="share-qr" id="share-qr" aria-label="课表分享二维码"></div><div class="face-share-info"><span>10 分钟有效的分享码</span><strong class="face-share-code" id="share-code">------</strong><p>让对方打开“导入课表”页面并输入这 6 位数字。</p></div></div><label class="share-link-label">备用分享链接<div class="copy-field"><input id="share-link" readonly /><button class="button primary" id="copy-share-link" type="button">复制链接</button></div></label><p class="share-expiry" id="share-expiry"></p></form></dialog>
 
     <script src="../assets/api-client.js" defer></script>
     <script src="../assets/shared.js" defer></script>
+    <script src="../assets/qrcode.js" defer></script>
     <script src="../assets/workspace.js" defer></script>
   </body>
 </html>

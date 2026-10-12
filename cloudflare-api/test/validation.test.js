@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isAllowedOrigin } from '../src/index.js';
+import { faceShareCodeInput, faceShareInput, isAllowedOrigin } from '../src/index.js';
 import {
   constantTimeEqual,
   createPasswordRecord,
@@ -122,4 +122,13 @@ test('CORS origin checks are exact and localhost needs an explicit development f
   assert.equal(isAllowedOrigin('http://localhost:5173', requestUrl, { ALLOW_LOCALHOST_ORIGIN: 'false' }), false);
   assert.equal(isAllowedOrigin('https://wangaoqi23.github.io.attacker.example', requestUrl), false);
   assert.equal(isAllowedOrigin('http://127.0.0.1:5173', requestUrl), false);
+});
+
+test('face-to-face shares require a six digit code and bounded encoded payload', () => {
+  const input = { code: '012345', token: `z.${'A'.repeat(40)}` };
+  assert.deepEqual(faceShareInput(input), input);
+  assert.equal(faceShareCodeInput({ code: '012345' }), '012345');
+  assert.throws(() => faceShareInput({ code: '12345', token: input.token }), /6 digits/);
+  assert.throws(() => faceShareInput({ code: '123456', token: 'bad token' }), /payload/);
+  assert.throws(() => faceShareCodeInput({ code: 'abcdef' }), /6 digits/);
 });

@@ -18,6 +18,7 @@ const [
   loginHtml,
   workspaceHtml,
   importHtml,
+  qrCodeSource,
   stylesSource,
   dataSource,
   workflow,
@@ -35,6 +36,7 @@ const [
   read('github-pages/login/index.html'),
   read('github-pages/app/index.html'),
   read('github-pages/import/index.html'),
+  read('github-pages/assets/qrcode.js'),
   read('github-pages/assets/styles.css'),
   read('github-pages/data/schedule.json'),
   read('.github/workflows/deploy-pages.yml'),
@@ -105,6 +107,8 @@ function loadApiAt(pathname, search = '', hash = '', origin = 'https://wangaoqi2
         hash,
         replace(value) { replaced = value; },
       },
+      CompressionStream,
+      DecompressionStream,
     },
     document: { cookie: '', querySelector: () => ({ content: pathname === '/class-timetable/' ? './' : '../' }) },
     localStorage: {
@@ -118,6 +122,8 @@ function loadApiAt(pathname, search = '', hash = '', origin = 'https://wangaoqi2
     Set,
     TextEncoder,
     TextDecoder,
+    Blob,
+    Response,
     btoa,
     atob,
     crypto: webcrypto,
@@ -180,6 +186,8 @@ const shared = await localApi.request(`/api/schedules/${created.schedule.id}/sha
 const sharedUrl = new URL(shared.share.shareUrl);
 assert.equal(sharedUrl.origin, 'https://wangaoqi23.github.io');
 assert.equal(sharedUrl.pathname, '/class-timetable/import/');
+assert.match(sharedUrl.hash, /^#z\./, 'local face-to-face shares should use compressed tokens');
+assert.ok(sharedUrl.href.length < 2953, 'a normal timetable share should fit in a QR code');
 const preview = await localApi.request('/api/shares/preview', {
   method: 'POST', auth: false, body: JSON.stringify({ token: sharedUrl.hash.slice(1) }),
 });
@@ -283,6 +291,8 @@ assert.match(workspaceSource, /redirectAccountPageToPrimary\(\)/);
 assert.match(workspaceSource, /updateScheduleUrl\(record\.id\)/);
 assert.match(workspaceSource, /请先保存当前更改，再创建分享链接/);
 assert.match(workspaceSource, /share\.shareUrl/);
+assert.match(workspaceSource, /getUint32\(0\) % 1000000/);
+assert.match(workspaceSource, /window\.qrcode/);
 assert.match(workspaceSource, /link\.origin\s*!==\s*window\.location\.origin/);
 assert.doesNotMatch(workspaceSource, /link\.hash\s*=\s*encodeURIComponent\(share\.id\)/);
 assert.doesNotMatch(workspaceSource, /getToken|clearSession|Authorization|Bearer/);
@@ -293,11 +303,19 @@ assert.match(loginHtml, /id="auth-full-name"/);
 assert.match(loginHtml, /id="auth-class"/);
 assert.match(loginHtml, /href="https:\/\/wangaoqi23\.github\.io\/class-timetable\/admin\/"/);
 assert.match(workspaceHtml, /assets\/workspace\.js/);
+assert.match(workspaceHtml, /assets\/qrcode\.js/);
+assert.match(workspaceHtml, /id="share-qr"/);
+assert.match(workspaceHtml, /id="share-code"/);
+assert.match(qrCodeSource, /QR Code Generator for JavaScript/);
 assert.match(workspaceHtml, /id="schedule-kind"/);
 assert.match(workspaceSource, /PUBLIC_SCHEDULE_ID/);
 assert.match(workspaceSource, /publicScheduleForUser/);
 assert.match(workspaceSource, /timetable_last_schedule_/);
 assert.match(importHtml, /assets\/import\.js/);
+assert.match(importHtml, /id="shared-code"/);
+assert.match(importSource, /state\.shareId\.length > 100000/);
+assert.doesNotMatch(importSource, /state\.shareId\.length > 200/);
+assert.match(importSource, /getUint32\(0\) % 1000000/);
 assert.match(importHtml, /class="nav-link" href="\.\.\/">公共课表/);
 assert.match(importHtml, /meta name="app-root" content="\.\.\/"/);
 assert.match(importSource, /\/api\/shares\/preview/);
@@ -310,6 +328,7 @@ assert.match(importSource, /Api\.loginUrl\(\)/);
 assert.doesNotMatch(importSource, /innerHTML\s*=/, 'share preview should not inject schedule text as HTML');
 assert.match(stylesSource, /\.import-day-list/);
 assert.match(stylesSource, /\.workspace-shell/);
+assert.match(stylesSource, /\.face-share/);
 assert.match(stylesSource, /@media \(max-width: 680px\)/);
 
 for (const [source, html, label] of [

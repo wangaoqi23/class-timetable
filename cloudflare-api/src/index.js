@@ -43,6 +43,11 @@ class ApiError extends Error {
 
 const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
 const privateHeaders = { 'Cache-Control': 'no-store, max-age=0' };
+const FACE_SHARE_TTL_MS = 10 * 60 * 1000;
+const FACE_SHARE_CREATE_LIMIT = 30;
+const FACE_SHARE_RESOLVE_LIMIT = 60;
+const FACE_SHARE_TOKEN_PATTERN = /^(?:[zj]\.)?[A-Za-z0-9_-]{20,100000}$/;
+const FACE_SHARE_CODE_PATTERN = /^\d{6}$/;
 
 function timestamp(value) {
   return new Date(Number(value)).toISOString();
@@ -848,6 +853,61 @@ function validateShareRecordId(value) {
   return value;
 }
 
+function faceShareInput(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new ApiError(422, 'invalid_face_share', 'Face-to-face share data is invalid.');
+  }
+  const code = typeof value.code === 'string' ? value.code.trim() : '';
+  const token = typeof value.token === 'string' ? value.token.trim() : '';
+  if (!FACE_SHARE_CODE_PATTERN.test(code)) {
+    throw new ApiError(422, 'invalid_face_code', 'Face-to-face code must contain exactly 6 digits.');
+  }
+  if (!FACE_SHARE_TOKEN_PATTERN.test(token)) {
+    throw new ApiError(422, 'invalid_face_token', 'Face-to-face share payload is invalid.');
+  }
+  return { code, token };
+}
+
+function faceShareCodeInput(value) {
+  const code = value && typeof value.code === 'string' ? value.code.trim() : '';
+  if (!FACE_SHARE_CODE_PATTERN.test(code)) {
+    throw new ApiError(422, 'invalid_face_code', 'Face-to-face code must contain exactly 6 digits.');
+  }
+  return code;
+}
+
+async function createFaceShare(request, env) {
+  await consumeAuthRateLimit(request, env, 'face-share-create', '', FACE_SHARE_CREATE_LIMIT);
+  const { code, token } = faceShareInput(await readJson(request));
+  const now = Date.now();
+  const expiresAt = now + FACE_SHARE_TTL_MS;
+  await env.DB.prepare('DELETE FROM face_shares WHERE expires_at <= ?1').bind(now).run();
+  const result = await env.DB
+    .prepare('INSERT OR IGNORE INTO face_shares (code, token, created_at, expires_at) VALUES (?1, ?2, ?3, ?4)')
+    .bind(code, token, now, expiresAt)
+    .run();
+  if (!result.meta || Number(result.meta.changes) === 0) {
+    throw new ApiError(409, 'face_code_in_use', 'This face-to-face code is already in use.');
+  }
+  return json({ share: { code, expiresAt: timestamp(expiresAt) } }, 201, privateHeaders);
+}
+
+async function resolveFaceShare(request, env) {
+  await consumeAuthRateLimit(request, env, 'face-share-resolve', '', FACE_SHARE_RESOLVE_LIMIT);
+  const code = faceShareCodeInput(await readJson(request));
+  const now = Date.now();
+  const row = await env.DB
+    .prepare('SELECT token, expires_at FROM face_shares WHERE code = ?1')
+    .bind(code)
+    .first();
+  if (!row) throw new ApiError(404, 'face_share_not_found', 'Face-to-face code was not found.');
+  if (Number(row.expires_at) <= now) {
+    await env.DB.prepare('DELETE FROM face_shares WHERE code = ?1').bind(code).run();
+    throw new ApiError(410, 'face_share_expired', 'Face-to-face code has expired.');
+  }
+  return json({ share: { code, token: row.token, expiresAt: timestamp(row.expires_at) } }, 200, privateHeaders);
+}
+
 async function routeApi(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.length > 1 ? url.pathname.replace(/\/$/, '') : url.pathname;
@@ -856,6 +916,8 @@ async function routeApi(request, env) {
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) requireWriteOrigin(request, env);
 
   if (method === 'GET' && path === '/api/health') return json({ ok: true });
+  if (method === 'POST' && path === '/api/face-shares') return createFaceShare(request, env);
+  if (method === 'POST' && path === '/api/face-shares/preview') return resolveFaceShare(request, env);
   if (method === 'POST' && path === '/api/auth/register') return register(request, env);
   if (method === 'POST' && path === '/api/auth/login') return login(request, env);
   if (method === 'POST' && path === '/api/auth/logout') return logout(request, env);
@@ -948,4 +1010,4 @@ async function fetchHandler(request, env) {
 }
 
 export default { fetch: fetchHandler };
-export { ApiError, fetchHandler, readJson };
+export { ApiError, faceShareCodeInput, faceShareInput, fetchHandler, readJson };

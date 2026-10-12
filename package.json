@@ -7,7 +7,7 @@
   },
   "scripts": {
     "install:ci": "node scripts/install-ci.mjs",
-    "test:pages": "node scripts/test-github-pages.mjs && node --check github-pages/assets/shared.js && node --check github-pages/assets/app.js && node --check github-pages/assets/admin.js && node --check github-pages/assets/api-client.js && node --check github-pages/assets/auth.js && node --check github-pages/assets/session-redirect.js && node --check github-pages/assets/workspace.js && node --check github-pages/assets/import.js",
+    "test:pages": "node scripts/test-github-pages.mjs && node --check github-pages/assets/shared.js && node --check github-pages/assets/app.js && node --check github-pages/assets/admin.js && node --check github-pages/assets/api-client.js && node --check github-pages/assets/auth.js && node --check github-pages/assets/session-redirect.js && node --check github-pages/assets/workspace.js && node --check github-pages/assets/import.js && node --check github-pages/assets/qrcode.js",
     "dev": "node scripts/run-framework.mjs dev",
     "build": "node scripts/run-framework.mjs build",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",

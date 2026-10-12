@@ -6,6 +6,7 @@
 
   const U = window.ScheduleUtils;
   const PUBLIC_SCHEDULE_ID = 'public-base';
+  const FACE_SHARE_API = 'https://class-timetable.wangaoqi23.workers.dev/api/face-shares';
   const state = {
     user: null,
     schedules: [],
@@ -31,7 +32,7 @@
     classDialog: byId('class-dialog'), classForm: byId('class-form'), classDialogTitle: byId('class-dialog-title'), classId: byId('class-id'), className: byId('class-name'), classNote: byId('class-note'),
     lessonDialog: byId('lesson-editor-dialog'), lessonForm: byId('lesson-form'), lessonDialogTitle: byId('lesson-dialog-title'), lessonId: byId('lesson-id'), lessonName: byId('lesson-name'), lessonTeacher: byId('lesson-teacher'), lessonRoom: byId('lesson-room'), lessonDay: byId('lesson-day'), lessonParity: byId('lesson-parity'), lessonStart: byId('lesson-start'), lessonEnd: byId('lesson-end'), lessonFrom: byId('lesson-from'), lessonTo: byId('lesson-to'), lessonColor: byId('lesson-color'),
     detailDialog: byId('lesson-detail-dialog'), detailName: byId('detail-name'), detailClass: byId('detail-class'), detailList: byId('detail-list'),
-    shareDialog: byId('share-dialog'), shareLink: byId('share-link'), copyShareLink: byId('copy-share-link'), shareExpiry: byId('share-expiry'),
+    shareDialog: byId('share-dialog'), shareLink: byId('share-link'), copyShareLink: byId('copy-share-link'), shareExpiry: byId('share-expiry'), shareQr: byId('share-qr'), shareCode: byId('share-code'),
   };
 
   function mondayDate() {
@@ -524,13 +525,58 @@
     }
     elements.share.disabled = true;
     try {
-      const payload = await Api.request(`/api/schedules/${encodeURIComponent(state.record.id)}/shares`, { method: 'POST', body: JSON.stringify({ expiresInDays: 30 }) });
-      const share = unwrap(payload, 'share');
-      if (!share?.shareUrl) throw new Error('分享响应缺少可用链接。');
-      const link = new URL(share.shareUrl, window.location.href);
-      if (link.origin !== window.location.origin) throw new Error('分享响应指向了无效站点。');
+      let link;
+      let share;
+      let codeText = '';
+      let faceShareExpiresAt = null;
+      let faceShareAvailable = false;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const payload = await Api.request(`/api/schedules/${encodeURIComponent(state.record.id)}/shares`, { method: 'POST', body: JSON.stringify({ expiresInDays: 30 }) });
+        share = unwrap(payload, 'share');
+        if (!share?.shareUrl) throw new Error('分享响应缺少可用链接。');
+        link = new URL(share.shareUrl, window.location.href);
+        if (link.origin !== window.location.origin) throw new Error('分享响应指向了无效站点。');
+        const token = decodeURIComponent(link.hash.slice(1));
+        const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)));
+        codeText = String(new DataView(digest.buffer).getUint32(0) % 1000000).padStart(6, '0');
+        try {
+          const response = await fetch(FACE_SHARE_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: codeText, token }),
+            signal: AbortSignal.timeout(6000),
+          });
+          if (response.status === 409) continue;
+          if (!response.ok) throw new Error(`face share ${response.status}`);
+          const facePayload = await response.json();
+          faceShareExpiresAt = facePayload?.share?.expiresAt || null;
+          faceShareAvailable = true;
+        } catch {
+          faceShareAvailable = false;
+        }
+        break;
+      }
+      if (!link || !share) throw new Error('暂时无法创建分享，请稍后重试。');
       elements.shareLink.value = link.href;
-      elements.shareExpiry.textContent = share.expiresAt ? `链接有效期至 ${new Date(share.expiresAt).toLocaleString('zh-CN', { hour12: false })}` : '链接已创建';
+      elements.shareCode.textContent = codeText;
+      elements.shareQr.replaceChildren();
+      try {
+        if (typeof window.qrcode !== 'function') throw new Error('二维码组件未加载');
+        const code = window.qrcode(0, 'L');
+        code.addData(link.href);
+        code.make();
+        const image = document.createElement('img');
+        image.src = code.createDataURL(6, 12);
+        image.alt = `课表分享二维码，面对面码 ${elements.shareCode.textContent}`;
+        elements.shareQr.append(image);
+      } catch {
+        const fallback = document.createElement('p');
+        fallback.textContent = '课表内容较多，请使用下方备用链接分享。';
+        elements.shareQr.append(fallback);
+      }
+      elements.shareExpiry.textContent = faceShareAvailable
+        ? `6 位码有效期至 ${new Date(faceShareExpiresAt).toLocaleString('zh-CN', { hour12: false })}；二维码和备用链接可继续使用。`
+        : '二维码和备用链接已创建；6 位码中转服务暂时不可用。';
       elements.shareDialog.showModal();
     } catch (error) { showMessage('error', error instanceof Error ? error.message : '创建分享失败。'); }
     finally { elements.share.disabled = false; }
@@ -539,7 +585,7 @@
   async function copyShareLink() {
     try { await navigator.clipboard.writeText(elements.shareLink.value); elements.copyShareLink.textContent = '已复制'; }
     catch { elements.shareLink.select(); document.execCommand('copy'); elements.copyShareLink.textContent = '已复制'; }
-    setTimeout(() => { elements.copyShareLink.textContent = '复制'; }, 1500);
+    setTimeout(() => { elements.copyShareLink.textContent = '复制链接'; }, 1500);
   }
 
   function openClassDialog(schoolClass) {
